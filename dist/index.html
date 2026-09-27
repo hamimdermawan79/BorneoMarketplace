@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Portal pengadaan terintegrasi untuk koperasi dan dapur MBG: katalog, stok, pesanan, dan pemantauan dalam satu sistem." />
+    <meta name="theme-color" content="#071a2f" />
+    <title>Koperasi MBG — Pengadaan Dapur dalam Satu Sistem</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230369a1'/%3E%3Cpath d='M17 21h30v25H17z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M23 21v-5h18v5M25 31h14M25 38h8' fill='none' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Lewati ke konten utama</a>
+
+    <header class="site-header" data-header>
+      <div class="container header-inner">
+        <a class="brand" href="#top" aria-label="Koperasi MBG, kembali ke atas">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" role="img">
+              <path d="M7 10h18v15H7zM11 10V7h10v3M11 16h10M11 20h6" />
+            </svg>
+          </span>
+          <span>Koperasi <strong>MBG</strong></span>
+        </a>
+
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" data-menu-button>
+          <span class="sr-only">Buka menu navigasi</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        </button>
+
+        <nav class="primary-nav" id="primary-nav" aria-label="Navigasi utama" data-menu>
+          <a href="#manfaat">Manfaat</a>
+          <a href="#cara-kerja">Cara kerja</a>
+          <a href="#akses">Akses pengguna</a>
+          <a class="nav-cta" href="#mulai">Masuk ke sistem</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="hero-glow hero-glow-one" aria-hidden="true"></div>
+        <div class="hero-glow hero-glow-two" aria-hidden="true"></div>
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <div class="eyebrow reveal">
+              <span class="eyebrow-dot" aria-hidden="true"></span>
+              Portal pengadaan koperasi &amp; dapur MBG
+            </div>
+            <h1 class="reveal delay-1">Belanja dapur tertata. <span>Stok koperasi terkendali.</span></h1>
+            <p class="hero-lead reveal delay-2">Satukan katalog, ketersediaan barang, dan proses pesanan dalam satu alur yang mudah dipantau oleh koperasi maupun dapur MBG.</p>
+            <div class="hero-actions reveal delay-3">
+              <a class="button button-primary" href="#cara-kerja">
+                Lihat cara kerja
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+              </a>
+              <a class="button button-secondary" href="#manfaat">Jelajahi manfaat</a>
+            </div>
+            <ul class="trust-list reveal delay-4" aria-label="Keunggulan utama">
+              <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>Harga transparan</li>
+              <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>Stok terpantau</li>
+              <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>Status terlacak</li>
+            </ul>
+          </div>
+
+          <div class="hero-visual reveal delay-2" aria-label="Contoh tampilan ringkasan operasional">
+            <div class="visual-orbit" aria-hidden="true"></div>
+            <div class="app-window">
+              <div class="window-bar">
+                <div class="mini-brand">
+                  <span class="mini-brand-mark"><svg viewBox="0 0 24 24"><path d="M5 8h14v11H5zM8 8V5h8v3" /></svg></span>
+                  <span>Ringkasan hari ini</span>
+                </div>
+                <span class="live-label"><i aria-hidden="true"></i> Operasional</span>
+              </div>
+              <div class="stats-grid">
+                <article class="stat-card">
+                  <span>Pesanan baru</span>
+                  <strong>12</strong>
+                  <small>Perlu dikonfirmasi</small>
+                </article>
+                <article class="stat-card accent-card">
+                  <span>Siap dikirim</span>
+                  <strong>8</strong>
+                  <small>Jadwal hari ini</small>
+                </article>
+              </div>
+              <div class="order-panel">
+                <div class="panel-title">
+                  <div><span>Pesanan terbaru</span><small>Contoh tampilan sistem</small></div>
+                  <span class="panel-link">Lihat semua</span>
+                </div>
+                <div class="order-row">
+                  <span class="product-icon blue"><svg viewBox="0 0 24 24"><path d="M4 8h16v11H4zM7 8l2-4h6l2 4M8 13h8" /></svg></span>
+                  <div class="order-name"><strong>Dapur Cempaka</strong><span>ORD-0927-018</span></div>
+                  <span class="status status-new">Baru</span>
+                  <strong class="order-value">Rp2,48 jt</strong>
+                </div>
+                <div class="order-row">
+                  <span class="product-icon orange"><svg viewBox="0 0 24 24"><path d="M5 7h14v12H5zM8 7V4h8v3M9 12h6" /></svg></span>
+                  <div class="order-name"><strong>Dapur Melati</strong><span>ORD-0927-017</span></div>
+                  <span class="status status-process">Disiapkan</span>
+                  <strong class="order-value">Rp1,86 jt</strong>
+                </div>
+              </div>
+              <div class="stock-note">
+                <span class="note-icon"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3Zm0 6v5m0 3v.1" /></svg></span>
+                <div><strong>3 stok perlu perhatian</strong><span>Beras medium, telur ayam, dan minyak goreng</span></div>
+                <svg class="note-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+              </div>
+            </div>
+            <div class="floating-card floating-stock">
+              <span class="ring-chart"><b>82%</b></span>
+              <div><strong>Stok sehat</strong><span>42 produk tersedia</span></div>
+            </div>
+            <div class="floating-card floating-order">
+              <span class="float-icon"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></span>
+              <div><strong>Pesanan tercatat</strong><span>Stok otomatis direservasi</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="signal-bar" aria-label="Cakupan sistem">
+        <div class="container signal-grid">
+          <p><strong>Satu sistem</strong><span>untuk seluruh proses pengadaan</span></p>
+          <div class="signal-items">
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5" /></svg>Katalog</span>
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM8 8V5h8v3M9 13h6" /></svg>Persediaan</span>
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 9h6m-6 4h6" /></svg>Pesanan</span>
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3" /></svg>Laporan</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section benefits" id="manfaat">
+        <div class="container">
+          <div class="section-heading center-heading">
+            <span class="section-kicker">Lebih ringkas, lebih terkendali</span>
+            <h2>Dari permintaan dapur hingga barang diterima</h2>
+            <p>Semua pihak bekerja dari informasi yang sama—tanpa mengandalkan pesan yang tercecer atau pencatatan berulang.</p>
+          </div>
+          <div class="benefit-grid">
+            <article class="benefit-card">
+              <span class="card-number">01</span>
+              <span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5M15 16h1" /></svg></span>
+              <h3>Katalog yang selalu jelas</h3>
+              <p>Buyer melihat produk aktif, harga, satuan jual, serta ketersediaan sebelum membuat pesanan.</p>
+              <span class="text-link">Untuk buyer <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg></span>
+            </article>
+            <article class="benefit-card featured-benefit">
+              <span class="card-number">02</span>
+              <span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM8 8V5h8v3M8 13h8m-8 3h5" /></svg></span>
+              <h3>Stok yang dapat dipercaya</h3>
+              <p>Stok masuk, reservasi pesanan, penyesuaian, dan stok keluar memiliki riwayat yang dapat ditelusuri.</p>
+              <span class="text-link">Untuk admin <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg></span>
+            </article>
+            <article class="benefit-card">
+              <span class="card-number">03</span>
+              <span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3" /></svg></span>
+              <h3>Keputusan berbasis data</h3>
+              <p>Manajemen memantau pesanan, produk terlaris, stok kritis, dan aktivitas penting dari satu dashboard.</p>
+              <span class="text-link">Untuk superadmin <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg></span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="supply-story">
+        <div class="container story-shell">
+          <div class="story-photo" role="img" aria-label="Aneka sayuran segar di pasar Indonesia">
+            <div class="photo-label">
+              <span class="label-line" aria-hidden="true"></span>
+              Pasokan lokal, proses digital
+            </div>
+            <a class="photo-credit" href="https://unsplash.com/photos/a-large-assortment-of-vegetables-on-display-at-a-market-D6qTM9JvxtY" target="_blank" rel="noreferrer">Foto: Rezkytama Putra / Unsplash</a>
+          </div>
+          <div class="story-copy">
+            <span class="section-kicker light-kicker">Dibangun untuk operasi nyata</span>
+            <h2>Barang bergerak cepat. Informasinya harus lebih cepat.</h2>
+            <p>Koperasi memperoleh kendali atas stok dan pemenuhan. Dapur MBG mendapat kepastian harga, jumlah, dan status tanpa harus mengejar pembaruan melalui chat.</p>
+            <div class="story-facts">
+              <div><strong>Terukur</strong><span>Setiap perubahan memiliki jejak waktu dan pelaku.</span></div>
+              <div><strong>Terhubung</strong><span>Buyer dan admin melihat status transaksi yang sama.</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section workflow" id="cara-kerja">
+        <div class="container">
+          <div class="section-heading split-heading">
+            <div><span class="section-kicker">Alur kerja sederhana</span><h2>Satu pesanan, satu jejak yang utuh</h2></div>
+            <p>Dari katalog sampai selesai, status bergerak berurutan sehingga tidak ada pesanan yang kehilangan konteks.</p>
+          </div>
+          <ol class="workflow-list">
+            <li>
+              <span class="step-index">01</span>
+              <span class="step-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 6 8-3 8 3-8 3-8-3Zm0 0v8l8 4 8-4V6M8 16v4h8v-4" /></svg></span>
+              <div><h3>Pilih kebutuhan</h3><p>Buyer membuka katalog, mengecek stok, lalu menyusun keranjang sesuai kebutuhan dapur.</p></div>
+            </li>
+            <li>
+              <span class="step-index">02</span>
+              <span class="step-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 9h8m-8 4h8m-8 4h5" /></svg></span>
+              <div><h3>Buat pesanan</h3><p>Harga dan jumlah divalidasi. Stok dipesan agar tidak terjual dua kali.</p></div>
+            </li>
+            <li>
+              <span class="step-index">03</span>
+              <span class="step-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h12v10H3zM15 10h4l2 3v3h-6M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" /></svg></span>
+              <div><h3>Proses &amp; kirim</h3><p>Admin mengonfirmasi, menyiapkan, dan mengirim pesanan dengan status yang terlihat oleh buyer.</p></div>
+            </li>
+            <li>
+              <span class="step-index">04</span>
+              <span class="step-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6M4 21h16" /></svg></span>
+              <div><h3>Selesai &amp; tercatat</h3><p>Stok keluar dan penyelesaian pesanan masuk ke laporan operasional serta dashboard.</p></div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section roles" id="akses">
+        <div class="container roles-shell">
+          <div class="roles-intro">
+            <span class="section-kicker">Akses sesuai tanggung jawab</span>
+            <h2>Satu platform, tiga sudut pandang</h2>
+            <p>Setiap pengguna mendapatkan tampilan dan kendali yang relevan, sehingga sistem tetap sederhana sekaligus aman.</p>
+          </div>
+          <div class="role-list">
+            <article class="role-row">
+              <span class="role-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7v5c0 5 3.5 8 8 9 4.5-1 8-4 8-9V7l-8-4Zm-3 9 2 2 4-5" /></svg></span>
+              <div><h3>Superadmin</h3><p>Kendali penuh atas pengguna, role, dashboard manajerial, organisasi, dan audit aktivitas.</p></div>
+              <span class="role-tag">Manajerial</span>
+            </article>
+            <article class="role-row">
+              <span class="role-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM8 8V5h8v3M8 13h8m-8 3h5" /></svg></span>
+              <div><h3>Admin koperasi</h3><p>Mengelola produk, harga, persediaan, serta memproses pesanan hingga selesai.</p></div>
+              <span class="role-tag">Operasional</span>
+            </article>
+            <article class="role-row">
+              <span class="role-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h2l2 9h8l2-6H8M10 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm7 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" /></svg></span>
+              <div><h3>Buyer dapur</h3><p>Melihat katalog, membuat pesanan, dan mengikuti proses pemenuhan dari satu tempat.</p></div>
+              <span class="role-tag">Pengadaan</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="final-cta" id="mulai">
+        <div class="container cta-shell">
+          <div class="cta-pattern" aria-hidden="true"></div>
+          <div class="cta-copy">
+            <span class="section-kicker light-kicker">Siap menyatukan proses pengadaan?</span>
+            <h2>Kelola kebutuhan dapur dengan lebih pasti.</h2>
+            <p>Mulai dari katalog yang jelas, stok yang dapat dipercaya, hingga pesanan yang mudah dipantau.</p>
+          </div>
+          <div class="cta-actions">
+            <button class="button button-light" type="button" data-demo-button>
+              Masuk ke sistem
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
+            <span>Preview landing page • versi konsep</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <a class="brand footer-brand" href="#top">
+          <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M7 10h18v15H7zM11 10V7h10v3M11 16h10M11 20h6" /></svg></span>
+          <span>Koperasi <strong>MBG</strong></span>
+        </a>
+        <p>Portal pengadaan terintegrasi untuk koperasi dan dapur MBG.</p>
+        <span>© <span data-year></span> Koperasi MBG</span>
+      </div>
+    </footer>
+
+    <div class="toast" role="status" aria-live="polite" data-toast>
+      <span class="toast-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></span>
+      <div><strong>Halaman masuk segera tersedia</strong><span>Preview berikutnya akan mencakup alur login dan dashboard.</span></div>
+      <button type="button" aria-label="Tutup pemberitahuan" data-toast-close><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
