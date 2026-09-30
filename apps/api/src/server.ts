@@ -11,6 +11,7 @@ import { orderRoutes } from './modules/orders.js';
 import { reportRoutes } from './modules/reports.js';
 import { managementRoutes } from './modules/management.js';
 import { specialRequestRoutes } from './modules/special-requests.js';
+import { resetRoutes } from './modules/reset.js';
 
 const app=Fastify({logger:true});
 await app.register(cors,{origin:config.WEB_ORIGIN,credentials:true});
@@ -23,4 +24,5 @@ app.get('/api/health',async()=>{await pool.query('SELECT 1');return {status:'ok'
 await app.register(authRoutes,{prefix:'/api/auth'});await app.register(catalogRoutes,{prefix:'/api'});await app.register(clusterRoutes,{prefix:'/api'});await app.register(orderRoutes,{prefix:'/api'});await app.register(reportRoutes,{prefix:'/api'});
 await app.register(managementRoutes,{prefix:'/api'});
 await app.register(specialRequestRoutes,{prefix:'/api'});
+await app.register(resetRoutes,{prefix:'/api'});
 await app.listen({port:config.PORT,host:'127.0.0.1'});

@@ -1,14 +1,15 @@
 import type { FastifyInstance } from 'fastify';
-import PDFDocument from 'pdfkit';
+import { salesPdf } from './sales-pdf.js';
 import { z } from 'zod';
 import { pool } from '../database/client.js';
 import { allow } from '../types.js';
 
-const filters=z.object({from:z.string().date().optional(),to:z.string().date().optional()});
+const filters=z.object({from:z.string().date().optional(),to:z.string().date().optional(),kitchenId:z.string().uuid().optional()}).refine(value=>!value.from||!value.to||value.from<=value.to,{message:'Periode awal harus sebelum periode akhir.'});
 const xml=(value:unknown)=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[char]!));
 async function reportRows(user:{id:string;role:string},query:unknown){
   const input=filters.parse(query);const params:unknown[]=[];const clauses=[`o.status IN('SHIPPED','AWAITING_KITCHEN','COMPLETED')`];
   if(user.role==='ADMIN'){params.push(user.id);clauses.push(`o.admin_user_id=$${params.length}`);}
+  if(input.kitchenId){params.push(input.kitchenId);clauses.push(`o.kitchen_id=$${params.length}`);}
   if(input.from){params.push(input.from);clauses.push(`o.needed_date>=$${params.length}`);}
   if(input.to){params.push(input.to);clauses.push(`o.needed_date<=$${params.length}`);}
   const {rows}=await pool.query(`SELECT o.order_no,o.needed_date,k.name AS kitchen,u.full_name AS admin,oi.product_name,
@@ -21,6 +22,13 @@ async function reportRows(user:{id:string;role:string},query:unknown){
 }
 
 export async function reportRoutes(app:FastifyInstance){
+  app.get('/reports/kitchens',{preHandler:allow('SUPERADMIN','ADMIN')},async request=>{
+    const params=request.user.role==='ADMIN'?[request.user.id]:[];
+    const scope=request.user.role==='ADMIN'?'WHERE o.admin_user_id=$1':'';
+    const {rows}=await pool.query(`SELECT DISTINCT k.id,k.name FROM orders o JOIN organizations k ON k.id=o.kitchen_id ${scope} ORDER BY k.name`,params);
+    return rows;
+  });
+  app.get('/reports/sales',{preHandler:allow('SUPERADMIN','ADMIN')},async request=>reportRows(request.user,request.query));
   app.get('/reports/sales.xls',{preHandler:allow('SUPERADMIN','ADMIN')},async(request,reply)=>{
     const rows=await reportRows(request.user,request.query);const headers=['Tanggal','No. Pesanan','Admin','Dapur','Barang','Sumber','Jumlah','Satuan','Berat Aktual (kg)','Harga Jual','Harga Modal','Nilai Penjualan','Estimasi Margin'];
     const body=rows.map(r=>{const basis=Number(r.actual_weight_kg||r.ordered_quantity);const cost=basis*Number(r.unit_cost||0);const values=[new Date(r.needed_date).toLocaleDateString('id-ID'),r.order_no,r.admin,r.kitchen,r.product_name,r.sources,Number(r.ordered_quantity),r.order_unit,r.actual_weight_kg?Number(r.actual_weight_kg):'',Number(r.unit_price),Number(r.unit_cost||0),Number(r.total),Number(r.total)-cost];return `<Row>${values.map((value,index)=>`<Cell${index>=9?' ss:StyleID="Currency"':''}><Data ss:Type="${typeof value==='number'?'Number':'String'}">${xml(value)}</Data></Cell>`).join('')}</Row>`}).join('');
@@ -29,10 +37,8 @@ export async function reportRoutes(app:FastifyInstance){
   });
 
   app.get('/reports/sales.pdf',{preHandler:allow('SUPERADMIN','ADMIN')},async(request,reply)=>{
-    const rows=await reportRows(request.user,request.query);const chunks:Buffer[]=[];const doc=new PDFDocument({margin:42,size:'A4'});doc.on('data',chunk=>chunks.push(chunk));
-    doc.fontSize(18).fillColor('#0F2740').text('Laporan Penjualan Koperasi Borneo Mandiri');doc.moveDown(.4).fontSize(9).fillColor('#637B90').text(`Dicetak ${new Intl.DateTimeFormat('id-ID',{dateStyle:'long',timeStyle:'short',timeZone:'Asia/Jakarta'}).format(new Date())}`);doc.moveDown();
-    const total=rows.reduce((sum,r)=>sum+Number(r.total),0);doc.fontSize(12).fillColor('#0F2740').text(`Total penjualan: Rp${new Intl.NumberFormat('id-ID').format(total)}`);doc.text(`Jumlah baris transaksi: ${rows.length}`);doc.moveDown();
-    for(const r of rows){if(doc.y>730)doc.addPage();doc.fontSize(10).fillColor('#0F2740').text(`${r.order_no} · ${r.kitchen}`,{continued:true}).fillColor('#637B90').text(`  ${new Date(r.needed_date).toLocaleDateString('id-ID')}`);doc.fontSize(9).fillColor('#334155').text(`${r.product_name} — ${r.ordered_quantity} ${r.order_unit}${r.actual_weight_kg?` / ${r.actual_weight_kg} kg`:''} — ${r.sources}`);doc.text(`Nilai: Rp${new Intl.NumberFormat('id-ID').format(Number(r.total))}`);doc.moveDown(.6);}
-    doc.end();await new Promise<void>(resolve=>doc.on('end',resolve));reply.header('Content-Type','application/pdf').header('Content-Disposition','attachment; filename="laporan-penjualan-borneo.pdf"');return reply.send(Buffer.concat(chunks));
+    const rows=await reportRows(request.user,request.query);
+    const pdf=await salesPdf(rows,filters.parse(request.query));
+    reply.header('Content-Type','application/pdf').header('Content-Disposition','attachment; filename="laporan-penjualan-borneo.pdf"');return reply.send(pdf);
   });
 }

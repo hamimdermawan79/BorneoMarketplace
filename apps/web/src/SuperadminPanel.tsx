@@ -1,6 +1,8 @@
+import { ResetData } from './ResetData';
+import { ReportsView } from './ReportsView';
 import { useEffect,useState,type FormEvent } from 'react';
-import { AlertTriangle,Building2,CheckCircle2,CircleDollarSign,ClipboardList,History,MapPin,ShieldCheck,UsersRound } from 'lucide-react';
-import { api,download,type User } from './api';
+import { AlertTriangle,Building2,CheckCircle2,CircleDollarSign,ClipboardList,History,MapPin,ShieldCheck } from 'lucide-react';
+import { api,type User } from './api';
 
 type Summary={activeAdmins:number;activeKitchens:number;activeOrders:number;completedThisMonth:number;salesThisMonth:number;unassignedKitchens:number};
 type AdminPerformance={id:string;name:string;email:string;active:boolean;kitchens:number;products:number;activeOrders:number;salesThisMonth:number};
@@ -21,8 +23,9 @@ export function SuperadminPanel({page,currentUser}:{page:string;currentUser:User
   const[overview,setOverview]=useState<Overview|null>(null);const[users,setUsers]=useState<ManagedUser[]>([]);const[clusters,setClusters]=useState<Cluster[]>([]);const[kitchens,setKitchens]=useState<Kitchen[]>([]);const[orders,setOrders]=useState<Order[]>([]);const[organizations,setOrganizations]=useState<Organization[]>([]);const[auditLogs,setAuditLogs]=useState<AuditLog[]>([]);const[templates,setTemplates]=useState<ProductTemplate[]>([]);const[error,setError]=useState('');
   const load=async()=>{setError('');try{const[dataOverview,dataUsers,dataClusters,dataKitchens,dataOrders,dataOrganizations,dataAuditLogs,dataTemplates]=await Promise.all([api<Overview>('/management/overview'),api<ManagedUser[]>('/users'),api<Cluster[]>('/clusters'),api<Kitchen[]>('/kitchens'),api<Order[]>('/orders'),api<Organization[]>('/organizations'),api<AuditLog[]>('/audit-logs'),api<ProductTemplate[]>('/templates')]);setOverview(dataOverview);setUsers(dataUsers);setClusters(dataClusters);setKitchens(dataKitchens);setOrders(dataOrders);setOrganizations(dataOrganizations);setAuditLogs(dataAuditLogs);setTemplates(dataTemplates)}catch(reason){setError((reason as Error).message)}};
   useEffect(()=>{load()},[]);
-  if(error)return <ManagementPage title="Dashboard Perusahaan" subtitle="Pusat kendali operasional Koperasi Borneo Mandiri"><div className="management-alert error">{error}<button onClick={load}>Coba lagi</button></div></ManagementPage>;
+  if(error)return <ManagementPage title="Dashboard Perusahaan" dashboard><div className="management-alert error">{error}<button onClick={load}>Coba lagi</button></div></ManagementPage>;
   if(!overview)return <div className="management-loading">Memuat data perusahaan…</div>;
+  if(page==='settings')return <ResetData/>;
   if(page==='users')return <UserManagement users={users} admins={users.filter(user=>user.role==='ADMIN')} currentUser={currentUser} reload={load}/>;
   if(page==='products')return <ProductMaster templates={templates} reload={load}/>;
   if(page==='clusters')return <ClusterManagement clusters={clusters} kitchens={kitchens} reload={load}/>;
@@ -35,23 +38,23 @@ export function SuperadminPanel({page,currentUser}:{page:string;currentUser:User
 
 function ExecutiveDashboard({overview,auditLogs}:{overview:Overview;auditLogs:AuditLog[]}){
   const summary=overview.summary;const statusMap=Object.fromEntries(overview.statuses.map(row=>[row.status,row.count]));
-  return <ManagementPage title="Dashboard Perusahaan" subtitle="Ringkasan kinerja dan aktivitas seluruh jaringan koperasi.">
+  return <ManagementPage title="Dashboard Perusahaan" dashboard>
     {Number(summary.unassignedKitchens)>0&&<div className="management-alert"><AlertTriangle size={18}/><span><strong>{summary.unassignedKitchens} dapur belum memiliki admin pengelola.</strong> Atur melalui menu Cluster Admin–Dapur.</span></div>}
     <section className="executive-metrics" aria-label="Indikator utama perusahaan">
-      <ExecutiveMetric icon={<CircleDollarSign/>} label="Penjualan bulan ini" value={money(Number(summary.salesThisMonth))} note="Pesanan yang telah selesai"/>
-      <ExecutiveMetric icon={<ClipboardList/>} label="Pesanan aktif" value={summary.activeOrders} note="Lintas seluruh cluster"/>
-      <ExecutiveMetric icon={<CheckCircle2/>} label="Selesai bulan ini" value={summary.completedThisMonth} note="Sudah dikonfirmasi dapur"/>
-      <ExecutiveMetric icon={<Building2/>} label="Dapur aktif" value={summary.activeKitchens} note={`${summary.activeAdmins} admin koperasi aktif`}/>
+      <ExecutiveMetric icon={<CircleDollarSign/>} label="Penjualan bulan ini" value={money(Number(summary.salesThisMonth))}/>
+      <ExecutiveMetric icon={<ClipboardList/>} label="Pesanan aktif" value={summary.activeOrders}/>
+      <ExecutiveMetric icon={<CheckCircle2/>} label="Selesai bulan ini" value={summary.completedThisMonth}/>
+      <ExecutiveMetric icon={<Building2/>} label="Dapur aktif" value={summary.activeKitchens}/>
     </section>
     <div className="management-grid">
-      <section className="panel management-table-panel"><div className="panel-heading"><div><h2>Kinerja admin koperasi</h2><p>Cakupan cluster dan aktivitas bulan berjalan.</p></div></div><div className="table-scroll"><table className="management-table"><thead><tr><th>Admin</th><th>Dapur</th><th>Produk</th><th>Pesanan aktif</th><th>Penjualan bulan ini</th></tr></thead><tbody>{overview.admins.map(admin=><tr key={admin.id}><td><strong>{admin.name}</strong><small>{admin.email}</small></td><td>{admin.kitchens}</td><td>{admin.products}</td><td>{admin.activeOrders}</td><td>{money(Number(admin.salesThisMonth))}</td></tr>)}</tbody></table></div></section>
-      <section className="panel pipeline-panel"><div className="panel-heading"><div><h2>Status operasional</h2><p>Distribusi seluruh pesanan.</p></div></div><div className="pipeline-list">{Object.entries(statusLabel).map(([status,label])=><div key={status}><span>{label}</span><strong>{statusMap[status]||0}</strong></div>)}</div></section>
+      <section className="panel management-table-panel"><div className="panel-heading"><h2>Kinerja admin koperasi</h2></div><div className="table-scroll"><table className="management-table"><thead><tr><th>Admin</th><th>Dapur</th><th>Produk</th><th>Pesanan aktif</th><th>Penjualan bulan ini</th></tr></thead><tbody>{overview.admins.map(admin=><tr key={admin.id}><td><strong>{admin.name}</strong><small>{admin.email}</small></td><td>{admin.kitchens}</td><td>{admin.products}</td><td>{admin.activeOrders}</td><td>{money(Number(admin.salesThisMonth))}</td></tr>)}</tbody></table></div></section>
+      <section className="panel pipeline-panel"><div className="panel-heading"><h2>Status operasional</h2></div><div className="pipeline-list">{Object.entries(statusLabel).map(([status,label])=><div key={status}><span>{label}</span><strong>{statusMap[status]||0}</strong></div>)}</div></section>
     </div>
-    <section className="panel recent-audit"><div className="panel-heading"><div><h2>Aktivitas manajerial terbaru</h2><p>Perubahan pengguna dan cluster yang tercatat pada sistem.</p></div></div><AuditRows logs={auditLogs.slice(0,5)}/></section>
+    <section className="panel recent-audit"><div className="panel-heading"><h2>Aktivitas terbaru</h2></div><AuditRows logs={auditLogs.slice(0,5)}/></section>
   </ManagementPage>
 }
 
-function ExecutiveMetric({icon,label,value,note}:{icon:React.ReactNode;label:string;value:string|number;note:string}){return <article className="executive-metric"><div className="metric-icon">{icon}</div><span>{label}</span><strong>{value}</strong><small>{note}</small></article>}
+function ExecutiveMetric({icon,label,value}:{icon:React.ReactNode;label:string;value:string|number}){return <article className="executive-metric"><div className="metric-icon">{icon}</div><span>{label}</span><strong>{value}</strong></article>}
 
 function UserManagement({users,admins,currentUser,reload}:{users:ManagedUser[];admins:ManagedUser[];currentUser:User;reload:()=>Promise<void>}){
   const[role,setRole]=useState<'ADMIN'|'BUYER'>('BUYER');const[notice,setNotice]=useState('');const[saving,setSaving]=useState(false);
@@ -59,11 +62,14 @@ function UserManagement({users,admins,currentUser,reload}:{users:ManagedUser[];a
   const update=async(id:string,changes:Record<string,unknown>)=>{setNotice('');try{await api(`/users/${id}`,{method:'PATCH',body:JSON.stringify(changes)});setNotice('Perubahan akun berhasil disimpan.');await reload()}catch(reason){setNotice((reason as Error).message)}};
   return <ManagementPage title="Manajemen Pengguna" subtitle="Buat akun admin koperasi dan dapur, serta kendalikan akses pengguna.">
     {notice&&<div className="management-alert" role="status">{notice}</div>}
-    <div className="account-layout">
-      <form className="panel account-form" onSubmit={create}><div className="panel-heading"><div><h2>Buat akun baru</h2><p>Semua bidang bertanda * wajib diisi.</p></div></div><div className="role-switch" aria-label="Pilih jenis akun"><button type="button" className={role==='BUYER'?'active':''} onClick={()=>setRole('BUYER')}>Buyer / Dapur</button><button type="button" className={role==='ADMIN'?'active':''} onClick={()=>setRole('ADMIN')}>Admin Koperasi</button></div><div className="form-grid"><label>Nama pengguna *<input name="fullName" required minLength={2}/></label><label>Email *<input name="email" type="email" autoComplete="off" required/></label><label>Password awal *<input name="password" type="password" minLength={8} defaultValue="Demo123!" required/></label>{role==='BUYER'&&<><label>Nama dapur *<input name="kitchenName" required/></label><label>Nomor HP *<input name="phone" type="tel" required/></label><label>Admin pengelola<select name="adminId"><option value="">Belum ditentukan</option>{admins.filter(admin=>admin.active).map(admin=><option value={admin.id} key={admin.id}>{admin.name}</option>)}</select></label><label className="form-span">Alamat dapur *<textarea name="address" rows={3} required/></label><label className="form-span">Link Google Maps *<input name="gmapsUrl" type="url" placeholder="https://maps.google.com/..." required/></label></>}</div><button className="primary" disabled={saving}>{saving?'Menyimpan…':`Buat akun ${role==='BUYER'?'dapur':'admin'}`}</button></form>
-      <aside className="panel account-summary"><ShieldCheck size={26}/><h2>Akses terkontrol</h2><p>Akun buyer hanya melihat katalog dan pesanan dapurnya. Admin koperasi hanya mengelola dapur di dalam cluster yang ditetapkan.</p><dl><div><dt>Superadmin</dt><dd>{users.filter(user=>user.role==='SUPERADMIN'&&user.active).length}</dd></div><div><dt>Admin aktif</dt><dd>{users.filter(user=>user.role==='ADMIN'&&user.active).length}</dd></div><div><dt>Buyer aktif</dt><dd>{users.filter(user=>user.role==='BUYER'&&user.active).length}</dd></div></dl></aside>
+    <div className="account-layout account-layout-single">
+      <form className="panel account-form" onSubmit={create}>
+        <div className="account-form-head"><h2>Buat akun</h2><div className="role-switch" aria-label="Pilih jenis akun"><button type="button" className={role==='BUYER'?'active':''} onClick={()=>setRole('BUYER')}>Buyer / Dapur</button><button type="button" className={role==='ADMIN'?'active':''} onClick={()=>setRole('ADMIN')}>Admin Koperasi</button></div></div>
+        <div className="form-grid"><label>Nama pengguna *<input name="fullName" required minLength={2}/></label><label>Email *<input name="email" type="email" autoComplete="off" required/></label><label>Password awal *<input name="password" type="password" minLength={8} defaultValue="Demo123!" required/></label>{role==='BUYER'&&<><label>Nama dapur *<input name="kitchenName" required/></label><label>Nomor HP *<input name="phone" type="tel" required/></label><label>Admin pengelola<select name="adminId"><option value="">Belum ditentukan</option>{admins.filter(admin=>admin.active).map(admin=><option value={admin.id} key={admin.id}>{admin.name}</option>)}</select></label><label className="account-address">Alamat dapur *<textarea name="address" rows={2} required/></label><label className="account-maps">Link Google Maps *<input name="gmapsUrl" type="url" placeholder="https://maps.google.com/..." required/></label></>}</div>
+        <button className="primary" disabled={saving}>{saving?'Menyimpan…':`Buat akun ${role==='BUYER'?'dapur':'admin'}`}</button>
+      </form>
     </div>
-    <section className="panel management-table-panel"><div className="panel-heading"><div><h2>Daftar pengguna</h2><p>{users.length} akun terdaftar pada sistem.</p></div></div><div className="table-scroll"><table className="management-table"><thead><tr><th>Pengguna</th><th>Role</th><th>Organisasi</th><th>Pengelola</th><th>Status</th><th>Aksi</th></tr></thead><tbody>{users.map(user=><tr key={user.id}><td><strong>{user.name}</strong><small>{user.email}</small></td><td>{user.role==='BUYER'?<span className="role-label">Buyer</span>:<select className="inline-select" value={user.role} disabled={user.id===currentUser.id} onChange={event=>update(user.id,{role:event.target.value})}><option value="ADMIN">Admin</option><option value="SUPERADMIN">Superadmin</option></select>}</td><td>{user.organization||'—'}</td><td>{user.manager||'—'}</td><td><span className={user.active?'state-text active':'state-text'}>{user.active?'Aktif':'Nonaktif'}</span></td><td><button type="button" className="table-action" disabled={user.id===currentUser.id} onClick={()=>update(user.id,{active:!user.active})}>{user.active?'Nonaktifkan':'Aktifkan'}</button></td></tr>)}</tbody></table></div></section>
+    <section className="panel management-table-panel"><div className="panel-heading"><h2>Daftar pengguna</h2></div><div className="table-scroll"><table className="management-table"><thead><tr><th>Pengguna</th><th>Role</th><th>Organisasi</th><th>Pengelola</th><th>Status</th><th>Aksi</th></tr></thead><tbody>{users.map(user=><tr key={user.id}><td><strong>{user.name}</strong><small>{user.email}</small></td><td>{user.role==='BUYER'?<span className="role-label">Buyer</span>:<select className="inline-select" value={user.role} disabled={user.id===currentUser.id} onChange={event=>update(user.id,{role:event.target.value})}><option value="ADMIN">Admin</option><option value="SUPERADMIN">Superadmin</option></select>}</td><td>{user.organization||'—'}</td><td>{user.manager||'—'}</td><td><span className={user.active?'state-text active':'state-text'}>{user.active?'Aktif':'Nonaktif'}</span></td><td><button type="button" className="table-action" disabled={user.id===currentUser.id} onClick={()=>update(user.id,{active:!user.active})}>{user.active?'Nonaktifkan':'Aktifkan'}</button></td></tr>)}</tbody></table></div></section>
   </ManagementPage>
 }
 
@@ -93,12 +99,22 @@ function OrganizationDirectory({organizations}:{organizations:Organization[]}){
   </ManagementPage>
 }
 
-function AuditActivity({logs}:{logs:AuditLog[]}){return <ManagementPage title="Audit Aktivitas" subtitle="Riwayat perubahan penting yang dilakukan oleh pengguna berwenang."><section className="panel audit-panel"><div className="panel-heading"><div><h2>Aktivitas terbaru</h2><p>{logs.length} aktivitas terakhir ditampilkan.</p></div><History size={20}/></div><AuditRows logs={logs}/></section></ManagementPage>}
+function AuditActivity({logs}:{logs:AuditLog[]}){return <ManagementPage title="Audit Aktivitas"><section className="panel audit-panel"><div className="panel-heading"><h2>Aktivitas terbaru</h2><History size={20}/></div><AuditRows logs={logs}/></section></ManagementPage>}
 
-function AuditRows({logs}:{logs:AuditLog[]}){const action:Record<string,string>={CREATE:'Membuat',UPDATE:'Memperbarui',ASSIGN:'Mengatur'};const entity:Record<string,string>={USER:'pengguna',PARTNER:'akun mitra',ADMIN_CLUSTER:'cluster admin–dapur'};return <div className="audit-list">{logs.map(log=><article key={log.id}><span className="audit-mark"><History size={15}/></span><div><strong>{log.actor||'Sistem'} {action[log.action]?.toLowerCase()||log.action.toLowerCase()} {entity[log.entityType]||log.entityType.toLowerCase()}</strong><small>{log.actorEmail||'Aktivitas sistem'} · {new Date(log.createdAt).toLocaleString('id-ID')}</small></div><span>{log.action}</span></article>)}{logs.length===0&&<div className="management-empty">Belum ada aktivitas manajerial yang tercatat.</div>}</div>}
+function AuditRows({logs}:{logs:AuditLog[]}){
+  const descriptions:Record<string,string>={
+    'CREATE:USER':'membuat akun baru','UPDATE:USER':'memperbarui akun','CREATE:PARTNER':'membuat akun mitra','UPDATE:PARTNER':'memperbarui akun mitra',
+    'ASSIGN:ADMIN_CLUSTER':'mengatur pembagian dapur','CREATE:PRODUCT_TEMPLATE':'membuat produk baru','UPDATE:PRODUCT_TEMPLATE':'memperbarui produk',
+    'CREATE:INVENTORY_BATCH':'menambahkan stok','UPDATE:INVENTORY_BATCH':'memperbarui stok','RESET:SYSTEM':'membersihkan data uji coba'
+  };
+  const actions:Record<string,string>={CREATE:'membuat',UPDATE:'memperbarui',ASSIGN:'mengatur',RESET:'membersihkan',DELETE:'menghapus'};
+  const entities:Record<string,string>={USER:'akun',PARTNER:'akun mitra',ADMIN_CLUSTER:'pembagian dapur',PRODUCT_TEMPLATE:'produk',INVENTORY_BATCH:'stok',SYSTEM:'data sistem'};
+  const describe=(log:AuditLog)=>descriptions[`${log.action}:${log.entityType}`]||`${actions[log.action]||'melakukan perubahan pada'} ${entities[log.entityType]||'data operasional'}`;
+  return <div className="audit-list">{logs.map(log=><article key={log.id}><span className="audit-mark"><History size={15}/></span><div><strong>{log.actor||'Sistem'} {describe(log)}</strong><small>{log.actorEmail||'Aktivitas sistem'} · {new Date(log.createdAt).toLocaleString('id-ID')}</small></div></article>)}{logs.length===0&&<div className="management-empty">Belum ada aktivitas.</div>}</div>
+}
 
 function AllOrders({orders}:{orders:Order[]}){return <ManagementPage title="Semua Pesanan" subtitle="Pantau aktivitas pengadaan dari seluruh dapur dan admin koperasi."><section className="panel management-table-panel"><div className="panel-heading"><div><h2>Riwayat lintas cluster</h2><p>{orders.length} pesanan tercatat.</p></div></div><div className="table-scroll"><table className="management-table"><thead><tr><th>Pesanan</th><th>Dapur</th><th>Dibutuhkan</th><th>Item</th><th>Status</th><th>Nilai</th></tr></thead><tbody>{orders.map(order=><tr key={order.id}><td><strong>{order.orderNo}</strong></td><td>{order.kitchen}</td><td>{new Date(order.neededDate).toLocaleDateString('id-ID')}</td><td>{order.items.length} jenis</td><td><span className="state-text active">{statusLabel[order.status]}</span></td><td>{money(Number(order.finalTotal??order.estimatedTotal))}</td></tr>)}</tbody></table></div>{orders.length===0&&<div className="management-empty">Belum ada pesanan pada sistem.</div>}</section></ManagementPage>}
 
-function ManagementReports(){const[error,setError]=useState('');const get=async(type:'pdf'|'xls')=>{try{setError('');await download(`/reports/sales.${type}`,`laporan-penjualan.${type}`)}catch(reason){setError((reason as Error).message)}};return <ManagementPage title="Laporan Perusahaan" subtitle="Ekspor laporan operasional dan keuangan seluruh cluster."><section className="panel management-report"><div><h2>Laporan penjualan konsolidasi</h2><p>PDF untuk laporan operasional. Excel berisi tabel keuangan yang siap diolah.</p>{error&&<span className="form-error">{error}</span>}</div><div><button onClick={()=>get('pdf')}>Unduh PDF</button><button className="primary" onClick={()=>get('xls')}>Unduh Excel</button></div></section></ManagementPage>}
+function ManagementReports(){return <ReportsView/>}
 
-function ManagementPage({title,subtitle,children}:{title:string;subtitle:string;children:React.ReactNode}){return <div className="management-page"><header className="management-title"><div><span>Manajemen Perusahaan</span><h1>{title}</h1><p>{subtitle}</p></div><UsersRound size={30}/></header>{children}</div>}
+function ManagementPage({title,children,dashboard=false}:{title:string;subtitle?:string;children:React.ReactNode;dashboard?:boolean}){return <div className="management-page">{dashboard&&<header className="management-title"><h1>{title}</h1></header>}{children}</div>}
