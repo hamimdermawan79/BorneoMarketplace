@@ -1,0 +1,16 @@
+{
+  "name": "borneo-marketplace",
+  "private": true,
+  "version": "0.2.0",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,cyan \"npm run dev -w @borneo/api\" \"npm run dev -w @borneo/web\"",
+    "build": "npm run build -w @borneo/api && npm run build -w @borneo/web",
+    "test": "npm run test -w @borneo/api && npm run test -w @borneo/web",
+    "db:migrate": "npm run db:migrate -w @borneo/api",
+    "db:seed": "npm run db:seed -w @borneo/api"
+  },
+  "devDependencies": {
+    "concurrently": "latest"
+  }
+}

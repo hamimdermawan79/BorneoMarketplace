@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+
+# Build output and generated TypeScript metadata
+dist/
+apps/*/dist/
+*.tsbuildinfo
+*.tsbuildinfo.*
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Test and coverage output
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# Logs and runtime files
+*.log
+logs/
+*.pid
+*.pid.lock
+*.seed
+
+# Local databases, uploads, and temporary files
+*.sqlite
+*.sqlite3
+*.db
+uploads/
+tmp/
+temp/
+.cache/
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local Codex/Sites metadata
+.openai/
+
+# Legacy duplicate prototype directory
+/SistemKoperasi/
