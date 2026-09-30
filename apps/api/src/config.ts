@@ -14,6 +14,7 @@ function loadLocalEnv() {
   } catch { /* environment variables may be provided by the process */ }
 }
 
+// Reload local configuration whenever the API process starts.
 loadLocalEnv();
 
 export const config = z.object({

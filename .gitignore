@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+backups/
+*.dump
 
 # Build output and generated TypeScript metadata
 dist/
