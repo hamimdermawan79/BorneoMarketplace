@@ -4,15 +4,16 @@ Aplikasi pengadaan tertutup antara Koperasi Borneo Mandiri dan dapur mitra. Vers
 
 ## Menjalankan lokal
 
-Prasyarat: Node.js 20+ dan PostgreSQL 16+.
+Prasyarat: Node.js 22.12+ dan PostgreSQL 16+.
 
 1. Buat database bernama `borneo_marketplace`.
 2. Salin `apps/api/.env.example` menjadi `apps/api/.env`, lalu isi koneksi PostgreSQL dan secret JWT lokal.
 3. Instal dependensi dan siapkan database:
 
    ```bash
-   npm install
+   npm ci
    npm run db:migrate
+   npm run db:secure
    npm run db:seed
    ```
 
@@ -41,7 +42,9 @@ Semua akun demo memakai password `Demo123!`.
 | Buyer | `cempaka@borneo.local` | Dapur Cempaka · Admin B |
 | Buyer | `rafflesia@borneo.local` | Dapur Rafflesia · Admin C |
 
-Halaman `/login` menyediakan pemilih akun demo yang otomatis mengisi kredensial sesuai role.
+Halaman `/login` menyediakan pemilih akun demo hanya pada development. Seed dan login dengan password demo ditolak pada mode production. Jangan gunakan seed untuk data operasional asli.
+
+`db:secure` dijalankan sekali untuk membuat role `borneo_runtime` dan menyimpan koneksinya di `apps/api/.env.runtime`. Perintah ini menolak menimpa role atau file yang sudah ada. API mengutamakan `.env.runtime`; migrasi lokal memakai koneksi pemilik dari `.env`. Restart API setelah provisioning. Kedua file berisi rahasia dan tidak boleh diunggah.
 
 ## Fitur yang sudah tersedia
 
@@ -66,8 +69,12 @@ npm run build
 npm audit --audit-level=moderate
 ```
 
+Uji integrasi PostgreSQL setelah `db:secure`: `npm run test:security`. Pengujian membuat database sementara `borneo_security_test_<uuid>` dan menghapus database tersebut setelah selesai; membutuhkan akun maintenance dengan hak membuat database. Data operasional tidak dipakai sebagai fixture.
+
 ## Catatan keamanan
 
-File `apps/api/.env` tidak masuk Git. Jangan memasukkan password PostgreSQL produksi, JWT secret, atau kredensial lain ke repository. Untuk VPS, gunakan user database khusus aplikasi dengan hak minimum dan jalankan migrasi sebelum proses API dimulai.
+File `.env`, `.env.runtime`, dan backup tidak masuk Git. Jangan memasukkan password PostgreSQL produksi, JWT secret, atau kredensial lain ke repository. Mengabaikan file di Git tidak menghapus rahasia yang pernah terlanjur masuk riwayat commit: rotasi rahasia tersebut jika pernah dipublikasikan.
+
+Panduan pemisahan kredensial, backup, reset demo, persiapan VPS, hasil verifikasi, dan batas audit ada di [docs/SECURITY-AUDIT.md](docs/SECURITY-AUDIT.md).
 
 Keputusan produk dan aturan bisnis lebih lengkap ada di [docs/PRD-v0.2.md](docs/PRD-v0.2.md).

@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { pool, withTransaction } from './client.js';
 
+if(process.env.NODE_ENV==='production')throw new Error('Demo seed is disabled in production. Use db:bootstrap for the first real superadmin.');
 const passwordHash=await bcrypt.hash('Demo123!',12);
 await withTransaction(async client=>{
   const org=async(type:string,name:string,address:string|null=null)=>{

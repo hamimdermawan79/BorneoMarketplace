@@ -3,11 +3,12 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { pool, withTransaction } from '../database/client.js';
 import { allow } from '../types.js';
+import { mapsUrlInput, passwordInput } from '../security/input-validation.js';
 
-const baseUser=z.object({fullName:z.string().trim().min(2).max(120),email:z.string().trim().email().transform(value=>value.toLowerCase()),password:z.string().min(8).max(100)});
+const baseUser=z.object({fullName:z.string().trim().min(2).max(120),email:z.string().trim().max(254).email().transform(value=>value.toLowerCase()),password:passwordInput});
 const createUserSchema=z.discriminatedUnion('role',[
   baseUser.extend({role:z.literal('ADMIN')}),
-  baseUser.extend({role:z.literal('BUYER'),kitchen:z.object({name:z.string().trim().min(2).max(120),phone:z.string().trim().min(6).max(30),address:z.string().trim().min(5).max(300),gmapsUrl:z.string().trim().url(),adminId:z.string().uuid().nullable().optional()})})
+  baseUser.extend({role:z.literal('BUYER'),kitchen:z.object({name:z.string().trim().min(2).max(120),phone:z.string().trim().min(6).max(30),address:z.string().trim().min(5).max(300),gmapsUrl:mapsUrlInput,adminId:z.string().uuid().nullable().optional()})})
 ]);
 
 export async function managementRoutes(app:FastifyInstance){
@@ -81,11 +82,28 @@ export async function managementRoutes(app:FastifyInstance){
   app.patch('/users/:id',{preHandler:allow('SUPERADMIN')},async(request,reply)=>{
     const params=z.object({id:z.string().uuid()}).parse(request.params);const input=z.object({fullName:z.string().trim().min(2).max(120).optional(),role:z.enum(['SUPERADMIN','ADMIN']).optional(),active:z.boolean().optional()}).refine(value=>Object.keys(value).length>0).parse(request.body);
     if(params.id===request.user.id&&(input.active===false||input.role))return reply.code(409).send({message:'Akun yang sedang digunakan tidak dapat dinonaktifkan atau diubah rolenya.'});
-    const current=await pool.query('SELECT role FROM users WHERE id=$1',[params.id]);if(!current.rowCount)return reply.code(404).send({message:'Pengguna tidak ditemukan.'});
-    if(current.rows[0].role==='BUYER'&&input.role)return reply.code(409).send({message:'Role buyer terikat dengan identitas dapur dan tidak dapat diubah langsung.'});
-    const cooperative=input.role?(await pool.query(`SELECT id FROM organizations WHERE type='COOPERATIVE' AND active ORDER BY created_at LIMIT 1`)).rows[0]?.id:null;
-    const {rows}=await pool.query(`UPDATE users SET full_name=COALESCE($1,full_name),role=COALESCE($2,role),active=COALESCE($3,active),organization_id=CASE WHEN $2 IS NOT NULL THEN $4 ELSE organization_id END WHERE id=$5 RETURNING id,full_name AS name,email,role,active`,[input.fullName??null,input.role??null,input.active??null,cooperative,params.id]);
-    await pool.query(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,changes) VALUES($1,'UPDATE','USER',$2,$3)`,[request.user.id,params.id,JSON.stringify(input)]);
-    return rows[0];
+    return withTransaction(async client=>{
+      // Serialize role/cluster edits and re-check the actor after acquiring the lock.
+      await client.query('SELECT pg_advisory_xact_lock(7182431)');
+      const actor=await client.query("SELECT 1 FROM users WHERE id=$1 AND role='SUPERADMIN' AND active",[request.user.id]);
+      if(!actor.rowCount)throw Object.assign(new Error('Sesi tidak berlaku. Silakan masuk kembali.'),{statusCode:401});
+      const current=await client.query('SELECT role,active FROM users WHERE id=$1 FOR UPDATE',[params.id]);
+      if(!current.rowCount)throw Object.assign(new Error('Pengguna tidak ditemukan.'),{statusCode:404});
+      if(current.rows[0].role==='BUYER'&&input.role)throw Object.assign(new Error('Role buyer terikat dengan identitas dapur dan tidak dapat diubah langsung.'),{statusCode:409});
+      if(current.rows[0].role==='SUPERADMIN'&&current.rows[0].active&&(input.active===false||(input.role&&input.role!=='SUPERADMIN'))){
+        const remaining=await client.query("SELECT count(*)::int AS count FROM users WHERE role='SUPERADMIN' AND active AND id<>$1",[params.id]);
+        if(!remaining.rows[0].count)throw Object.assign(new Error('Minimal satu superadmin aktif harus dipertahankan.'),{statusCode:409});
+      }
+      if(current.rows[0].role==='ADMIN'&&input.role&&input.role!=='ADMIN'){
+        const assigned=await client.query('SELECT 1 FROM admin_kitchens WHERE admin_user_id=$1 LIMIT 1',[params.id]);
+        if(assigned.rowCount)throw Object.assign(new Error('Pindahkan dapur yang dikelola ke admin lain sebelum mengubah role.'),{statusCode:409});
+      }
+      const cooperative=input.role?(await client.query(`SELECT id FROM organizations WHERE type='COOPERATIVE' AND active ORDER BY created_at LIMIT 1`)).rows[0]?.id:null;
+      if(input.role&&!cooperative)throw Object.assign(new Error('Organisasi koperasi belum tersedia.'),{statusCode:409});
+      const {rows}=await client.query(`UPDATE users SET full_name=COALESCE($1,full_name),role=COALESCE($2,role),active=COALESCE($3,active),organization_id=CASE WHEN $2 IS NOT NULL THEN $4 ELSE organization_id END WHERE id=$5 RETURNING id,full_name AS name,email,role,active`,[input.fullName??null,input.role??null,input.active??null,cooperative,params.id]);
+      if(rows[0].role==='ADMIN'&&rows[0].active)await client.query(`INSERT INTO admin_products(admin_user_id,template_id,sale_price) SELECT $1,id,0 FROM product_templates WHERE active AND owner_admin_user_id IS NULL ON CONFLICT(admin_user_id,template_id) DO NOTHING`,[params.id]);
+      await client.query(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,changes) VALUES($1,'UPDATE','USER',$2,$3)`,[request.user.id,params.id,JSON.stringify(input)]);
+      return rows[0];
+    });
   });
 }

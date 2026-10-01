@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { pool, withTransaction } from '../database/client.js';
 import { allow } from '../types.js';
+import { randomBytes } from 'node:crypto';
+import { generateTemporaryPassword, mapsUrlInput } from '../security/input-validation.js';
 
 export async function clusterRoutes(app: FastifyInstance) {
   app.get('/clusters', { preHandler: allow('SUPERADMIN') }, async () => {
@@ -26,10 +28,10 @@ export async function clusterRoutes(app: FastifyInstance) {
   });
 
   app.post('/partners',{preHandler:allow('ADMIN')},async(request)=>{
-    const input=z.object({name:z.string().trim().min(2).max(120),phone:z.string().trim().min(6).max(30),address:z.string().trim().min(5).max(300),gmapsUrl:z.string().trim().url()}).parse(request.body);
+    const input=z.object({name:z.string().trim().min(2).max(120),phone:z.string().trim().min(6).max(30),address:z.string().trim().min(5).max(300),gmapsUrl:mapsUrlInput}).parse(request.body);
     const base=input.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'.').replace(/^\.|\.$/g,'')||'dapur';
-    let email=`${base}@borneo.local`;const found=await pool.query('SELECT 1 FROM users WHERE email=$1',[email]);if(found.rowCount)email=`${base}.${Math.floor(1000+Math.random()*9000)}@borneo.local`;
-    const temporaryPassword='Demo123!';const passwordHash=await bcrypt.hash(temporaryPassword,12);
+    const email=`${base.slice(0,48)}.${randomBytes(8).toString('hex')}@borneo.local`;
+    const temporaryPassword=generateTemporaryPassword();const passwordHash=await bcrypt.hash(temporaryPassword,12);
     return withTransaction(async client=>{
       const kitchen=(await client.query(`INSERT INTO organizations(type,name,phone,address,gmaps_url) VALUES('KITCHEN',$1,$2,$3,$4) RETURNING id`,[input.name,input.phone,input.address,input.gmapsUrl])).rows[0];
       const user=(await client.query(`INSERT INTO users(organization_id,full_name,email,password_hash,role) VALUES($1,$2,$3,$4,'BUYER') RETURNING id`,[kitchen.id,input.name,email,passwordHash])).rows[0];
@@ -41,9 +43,12 @@ export async function clusterRoutes(app: FastifyInstance) {
 
   app.put('/clusters/:adminId/kitchens', { preHandler: allow('SUPERADMIN') }, async request => {
     const params = z.object({ adminId:z.string().uuid() }).parse(request.params);
-    const input = z.object({ kitchenIds:z.array(z.string().uuid()) }).parse(request.body);
+    const input = z.object({ kitchenIds:z.array(z.string().uuid()).max(500) }).parse(request.body);
     await withTransaction(async client=>{
-      const admin=await client.query(`SELECT 1 FROM users WHERE id=$1 AND role='ADMIN' AND active`,[params.adminId]);
+      await client.query('SELECT pg_advisory_xact_lock(7182431)');
+      const actor=await client.query("SELECT 1 FROM users WHERE id=$1 AND role='SUPERADMIN' AND active",[request.user.id]);
+      if(!actor.rowCount)throw Object.assign(new Error('Sesi tidak berlaku. Silakan masuk kembali.'),{statusCode:401});
+      const admin=await client.query(`SELECT 1 FROM users WHERE id=$1 AND role='ADMIN' AND active FOR SHARE`,[params.adminId]);
       if(!admin.rowCount)throw Object.assign(new Error('Admin tidak ditemukan atau tidak aktif.'),{statusCode:404});
       if(input.kitchenIds.length){const kitchens=await client.query(`SELECT count(*)::int AS count FROM organizations WHERE id=ANY($1::uuid[]) AND type='KITCHEN' AND active`,[input.kitchenIds]);if(kitchens.rows[0].count!==new Set(input.kitchenIds).size)throw Object.assign(new Error('Salah satu dapur tidak ditemukan atau tidak aktif.'),{statusCode:404});}
       await client.query('DELETE FROM admin_kitchens WHERE admin_user_id=$1 OR kitchen_id=ANY($2::uuid[])',[params.adminId,input.kitchenIds]);

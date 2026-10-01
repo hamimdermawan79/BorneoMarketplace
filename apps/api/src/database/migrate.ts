@@ -1,7 +1,12 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pool } from './client.js';
+import { maintenancePool } from './maintenance.js';
+
+const pool=maintenancePool();
+const migrationLock=await pool.connect();
+try {
+await migrationLock.query("SELECT pg_advisory_lock(hashtext('borneo-schema-migrations'))");
 
 const directory = fileURLToPath(new URL('./migrations/', import.meta.url));
 await pool.query('CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
@@ -20,4 +25,7 @@ for (const name of readdirSync(directory).filter(file => file.endsWith('.sql')).
     throw error;
   } finally { client.release(); }
 }
-await pool.end();
+} finally {
+  try { await migrationLock.query("SELECT pg_advisory_unlock(hashtext('borneo-schema-migrations'))"); }
+  finally { migrationLock.release(); await pool.end(); }
+}
