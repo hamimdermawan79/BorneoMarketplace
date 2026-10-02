@@ -1,0 +1,65 @@
+name: CI and Production Deploy
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Test and Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  deploy:
+    name: Deploy Production
+    needs: verify
+    # Enable this repository variable only AFTER provisioning and a successful first deploy.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: production
+    concurrency:
+      group: borneo-production
+      cancel-in-progress: false
+    steps:
+      - name: Invoke the VPS deploy entry point
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$VPS_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.:-]*$ ]]
+          port="${VPS_PORT:-22}"
+          [[ "$port" =~ ^[0-9]+$ ]] && ((port >= 1 && port <= 65535))
+          [[ -n "$VPS_SSH_KEY" && -n "$VPS_KNOWN_HOSTS" ]]
+          umask 077
+          ssh_directory="$(mktemp -d)"
+          trap 'rm -f -- "$ssh_directory/key" "$ssh_directory/known_hosts"; rmdir -- "$ssh_directory"' EXIT
+          printf '%s\n' "$VPS_SSH_KEY" > "$ssh_directory/key"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$ssh_directory/known_hosts"
+          ssh -i "$ssh_directory/key" -p "$port" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$ssh_directory/known_hosts" -o ConnectTimeout=15 \
+            "borneo-deploy@$VPS_HOST" "sudo -n /usr/local/sbin/borneo-deploy $RELEASE_SHA"

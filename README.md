@@ -112,3 +112,18 @@ File `.env`, `.env.runtime`, dan backup tidak masuk Git. Jangan memasukkan passw
 Panduan pemisahan kredensial, backup, reset demo, persiapan VPS, hasil verifikasi, dan batas audit ada di [docs/SECURITY-AUDIT.md](docs/SECURITY-AUDIT.md).
 
 Keputusan produk dan aturan bisnis lebih lengkap ada di [docs/PRD-v0.2.md](docs/PRD-v0.2.md).
+
+## Deployment Production
+
+Template Ubuntu 24, GitHub Actions (test/build lalu auto-deploy setelah merge `main`),
+Nginx/systemd, pemisahan secret/data, backup sebelum migrasi, dan konfigurasi Cloudflare
+ada di [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Deploy belum aktif sampai VPS selesai
+di-provision dan repository variable `DEPLOY_ENABLED=true` dibuat. Jangan menjalankan
+template dengan placeholder atau mengunggah `.env`/foto/backup ke GitHub.
+
+Database production baru menggunakan `db:bootstrap`, bukan `db:seed`. CLI menerima
+`BOOTSTRAP_USERNAME` dan/atau `BOOTSTRAP_EMAIL` opsional, serta `BOOTSTRAP_PASSWORD`
+unik minimal 12 karakter dan maksimal 72 byte UTF-8. Username dapat dipakai untuk
+login tanpa email demo. Bootstrap menolak database yang sudah berisi user, menyimpan
+hash bcrypt (bukan password plaintext), dan tidak mencetak credential. Masukkan password
+langsung pada terminal/proses maintenance terpisah; jangan simpan dalam repo atau chat.

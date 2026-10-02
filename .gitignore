@@ -51,6 +51,8 @@ uploads/
 tmp/
 temp/
 .cache/
+# Generated reviews/reports are not application source.
+/output/
 
 # Editor and operating-system files
 .DS_Store
