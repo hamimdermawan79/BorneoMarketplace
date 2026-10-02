@@ -773,20 +773,15 @@ select:focus-visible {
 }
 
 /* Dashboard language carried forward from the approved static prototype. */
-.nav-context {
-  padding: 0 10px 12px;
-  color: #8a9cab;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase
-}
-
 .workspace>header {
   justify-content: space-between
 }
 
 .topbar-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px
 }
 
@@ -794,30 +789,47 @@ select:focus-visible {
   display: flex !important;
   grid-template: none !important;
   align-items: center;
-  gap: 10px;
+  flex: 0 0 auto;
+  gap: 10px !important;
+  max-width: min(300px, 45%);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   text-align: left !important
 }
 
-.user-chip>span {
+.user-chip .user-chip-avatar {
   width: 36px;
   height: 36px;
+  flex: 0 0 36px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  background: #e5f4fb;
-  color: #245d7c;
-  font-size: 11px;
-  font-weight: 700
+  border: 1px solid rgba(112, 177, 213, .35);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #e0f1fc, #c9e7f8);
+  color: var(--blue-dark);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: .02em
 }
 
-.user-chip>div {
+.user-chip .user-chip-details {
   display: grid;
-  gap: 2px
+  min-width: 0;
+  gap: 3px
 }
 
-.user-chip small {
-  font-size: 10px;
-  color: var(--muted)
+.user-chip .user-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.3;
+  font-weight: 600
 }
 
 .page-heading {
@@ -1075,6 +1087,24 @@ select:focus-visible {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 28px 80px rgba(9, 29, 43, .24)
+}
+
+.product-delete-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--line);
+}
+.product-delete-dialog::backdrop {
+  background: rgba(9, 29, 43, .45);
+}
+.product-delete-dialog p {
+  margin: 0 0 20px;
+  line-height: 1.6;
+}
+.product-delete-confirm {
+  background: #b42318;
+  border-color: #b42318;
+  color: white;
 }
 
 .modal-card>header {
@@ -1795,10 +1825,6 @@ select:focus-visible {
 }
 
 @media(max-width:760px) {
-  .nav-context {
-    display: none
-  }
-
   .workspace>header {
     padding-right: 86px
   }
@@ -1807,8 +1833,13 @@ select:focus-visible {
     display: none
   }
 
-  .user-chip>div {
+  .user-chip .user-chip-details {
     display: none
+  }
+
+  .user-chip {
+    max-width: none;
+    padding: 0
   }
 
   .buyer-metrics,
@@ -2028,11 +2059,15 @@ select:focus-visible {
 }
 
 .partner-admin-stack {
-  width: min(100%, 760px);
+  width: 100%;
   display: grid;
-  gap: 16px;
-  margin-inline: auto
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px
 }
+
+.partner-admin-stack > * { min-width: 0 }
+.partner-admin-stack > .notice { grid-column: 1 / -1; overflow-wrap: anywhere }
 
 .partner-form-panel {
   padding: 24px
@@ -2040,7 +2075,19 @@ select:focus-visible {
 
 .partner-form {
   display: grid;
-  gap: 15px
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px
+}
+
+.partner-form label:nth-of-type(n+5),
+.partner-form > button { grid-column: 1 / -1 }
+
+@media (max-width: 1100px) {
+  .partner-admin-stack { grid-template-columns: minmax(0, 1fr); gap: 16px }
+}
+@media (max-width: 540px) {
+  .partner-form-panel { padding: 20px }
+  .partner-form { grid-template-columns: minmax(0, 1fr) }
 }
 
 .partner-form label {
@@ -2330,14 +2377,26 @@ select:focus-visible {
 
 .product-master-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(250px, .7fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-bottom: 18px
 }
 
 .master-product-form {
   display: grid;
-  gap: 18px
+  gap: 20px
+}
+
+.master-product-form .panel-heading { margin-bottom: 0 }
+.master-entry-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start }
+.master-entry-fields { display: grid; gap: 16px; min-width: 0 }
+.master-form-actions { display: flex; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--line) }
+.master-form-actions>.primary { min-width: 160px }
+@media(max-width:800px) {
+  .master-entry-layout { grid-template-columns: minmax(0, 1fr); gap: 20px }
+}
+@media(max-width:560px) {
+  .master-form-actions>.primary { width: 100% }
 }
 
 .master-product-form label,
@@ -2387,23 +2446,11 @@ select:focus-visible {
   gap: 4px
 }
 
-.master-policy {
-  display: grid;
-  align-content: start;
-  gap: 12px
-}
-
-.master-policy>svg {
-  color: #39789c
-}
-
-.master-policy h2,
 .stock-rule h2 {
   margin: 0;
   font-size: 16px
 }
 
-.master-policy p,
 .stock-rule p,
 .vendor-form>p {
   margin: 0;
@@ -2412,13 +2459,11 @@ select:focus-visible {
   line-height: 1.65
 }
 
-.master-policy dl,
 .stock-rule dl {
   display: grid;
   margin: 8px 0 0
 }
 
-.master-policy dl>div,
 .stock-rule dl>div {
   display: flex;
   justify-content: space-between;
@@ -2427,7 +2472,6 @@ select:focus-visible {
   font-size: 11px
 }
 
-.master-policy dd,
 .stock-rule dd {
   margin: 0;
   font-weight: 700
@@ -2527,6 +2571,9 @@ select:focus-visible {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px
 }
+
+.stock-quantity-grid { grid-template-columns: minmax(90px,.7fr) minmax(0,1fr) minmax(0,1.3fr) }
+@media(max-width:560px) { .stock-modal-grid.stock-quantity-grid { grid-template-columns: minmax(0,1fr) } }
 
 .stock-modal-form label,
 .vendor-combobox {
@@ -4069,11 +4116,6 @@ select:focus-visible {
     padding-right: 44px
   }
 
-  .role-admin>aside .nav-context,
-  .role-superadmin>aside .nav-context {
-    display: block
-  }
-
   .role-admin>aside nav,
   .role-superadmin>aside nav {
     display: grid;
@@ -4776,8 +4818,8 @@ select:focus-visible {
   .role-superadmin>aside .brand,
   .role-admin>aside nav .mobile-primary-link,
   .role-superadmin>aside nav .mobile-primary-link { display: none }
-  .role-admin>aside .nav-context,
-  .role-superadmin>aside .nav-context { margin: 0 44px 14px 8px; padding: 0; line-height: 24px }
+  .role-admin>aside nav,
+  .role-superadmin>aside nav { padding-top: 32px }
   .role-admin>aside .mobile-sidebar-close,
   .role-superadmin>aside .mobile-sidebar-close { top: 8px; right: 8px }
   .role-admin>aside .logout,
@@ -4900,6 +4942,7 @@ select:focus-visible {
 }
 
 /* Unified, restrained KPI cards across account roles. */
+.mobile-app-brand { display: none }
 .app-shell .workspace :is(.buyer-metrics,.admin-metrics,.executive-metrics) {
   display: grid;
   gap: 12px;
@@ -4964,4 +5007,66 @@ select:focus-visible {
   .app-shell .workspace :is(.buyer-metric>strong,.admin-metrics .metric>strong,.executive-metric>strong) { font-size: 24px }
   .app-shell .workspace .buyer-metric { padding: 12px; min-height: 100px }
   .app-shell .workspace .executive-metric:first-child>strong { font-size: 20px }
+}
+
+/* Restrained mobile canvas using the existing brand palette. */
+@media(max-width:760px) {
+  .app-shell:is(.role-admin,.role-buyer) .workspace {
+    background: #f5f9fc;
+    min-height: 100dvh
+  }
+  .app-shell:is(.role-admin,.role-buyer) .workspace>header {
+    display: flex;
+    position: relative;
+    height: auto;
+    min-height: 92px;
+    padding: calc(18px + env(safe-area-inset-top)) 20px 22px;
+    gap: 12px;
+    border: 0;
+    background: linear-gradient(120deg,#dff0fa,#c8e7f7);
+    color: var(--blue-dark)
+  }
+  .app-shell:is(.role-admin,.role-buyer) .mobile-app-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    margin-right: auto;
+    color: var(--blue-dark);
+    text-decoration: none
+  }
+  .mobile-app-brand>img { flex: 0 0 40px; object-fit: contain }
+  .mobile-app-brand>span { display: grid; gap: 3px; font-size: 13px; line-height: 1.2 }
+  .mobile-app-brand b { font-size: 16px; font-weight: 650 }
+  .app-shell:is(.role-admin,.role-buyer) .topbar-title { display: none }
+  .app-shell:is(.role-admin,.role-buyer) .workspace>main {
+    position: relative;
+    margin-top: -8px;
+    padding-top: 24px;
+    border-radius: 24px 24px 0 0;
+    background: #f5f9fc
+  }
+  .app-shell:is(.role-admin,.role-buyer) .workspace>main .panel {
+    border-color: var(--line);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: none
+  }
+  .app-shell:is(.role-admin,.role-buyer) .workspace>main :is(.dashboard-section,.activity-panel,.requests-panel,.managed-account-panel) {
+    padding: 18px 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent
+  }
+  .app-shell:is(.role-admin,.role-buyer) .workspace :is(.buyer-metric,.admin-metrics .metric) {
+    min-height: 100px;
+    border-radius: 12px;
+    background: #eaf4fb;
+    border-color: var(--line);
+    box-shadow: none
+  }
+  .app-shell:is(.role-admin,.role-buyer) .workspace .buyer-product-card {
+    border-radius: 12px; background: #fff; border-color: var(--line)
+  }
 }

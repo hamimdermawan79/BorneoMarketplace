@@ -49,7 +49,7 @@ describe('management API security regressions',()=>{
   it('generates distinct partner credentials and does not audit their password',async()=>{
     mocks.query.mockImplementation(async(sql:string)=>sql.includes('RETURNING id')?{rows:[{id:foreignId}],rowCount:1}:{rows:[],rowCount:0});
     const app=await appWith(clusterRoutes);
-    const payload={name:'Dapur Baru',phone:'08123456789',address:'Desa Lumbang',gmapsUrl:'https://maps.app.goo.gl/abc'};
+    const payload={username:'dapur.baru',name:'Dapur Baru',phone:'08123456789',address:'Desa Lumbang',gmapsUrl:'https://maps.app.goo.gl/abc'};
     const first=(await app.inject({method:'POST',url:'/partners',payload})).json();
     const second=(await app.inject({method:'POST',url:'/partners',payload})).json();
     expect(first.temporaryPassword.length).toBeGreaterThanOrEqual(32);
@@ -82,10 +82,18 @@ describe('management API security regressions',()=>{
 
 describe('destructive reset guard',()=>{
   beforeEach(()=>{vi.stubEnv('ALLOW_DATA_RESET','true');vi.stubEnv('DATA_RESET_DATABASE_URL','postgresql://owner:password@127.0.0.1:5432/security_test');vi.stubEnv('NODE_ENV','development');});
-  it('always refuses production reset, even when explicitly enabled',async()=>{
+  it('permits configured production reset but still verifies the password first',async()=>{
+    mocks.query.mockResolvedValue({rows:[{password_hash:'test-hash'}],rowCount:1});mocks.compare.mockResolvedValue(false);
     vi.stubEnv('NODE_ENV','production');const app=await appWith(resetRoutes);
     const response=await app.inject({method:'POST',url:'/management/reset',payload:{confirmation,password:'password123'}});
-    expect(response.statusCode).toBe(403);expect(mocks.query).not.toHaveBeenCalled();expect(mocks.maintenanceConnect).not.toHaveBeenCalled();
+    expect(response.statusCode).toBe(403);expect(mocks.compare).toHaveBeenCalled();expect(mocks.maintenanceConnect).not.toHaveBeenCalled();
+  });
+  it('shows the reset form in production when configured',async()=>{
+    vi.stubEnv('NODE_ENV','production');
+    mocks.query.mockResolvedValue({rows:[{pesanan:2}],rowCount:1});
+    const app=await appWith(resetRoutes);
+    const response=await app.inject({method:'GET',url:'/management/reset'});
+    expect(response.statusCode).toBe(200);expect(response.json().enabled).toBe(true);
   });
   it('refuses reset without an explicit maintenance connection',async()=>{
     vi.stubEnv('DATA_RESET_DATABASE_URL','');const app=await appWith(resetRoutes);

@@ -14,6 +14,8 @@
     "db:secure": "npm run db:secure -w @borneo/api",
     "db:bootstrap": "npm run db:bootstrap -w @borneo/api",
     "db:backup": "npm run db:backup -w @borneo/api",
+    "db:images": "npm run db:images -w @borneo/api",
+    "assets:organize": "node scripts/organize-assets.mjs",
     "test:security": "npm run test:security -w @borneo/api"
   },
   "devDependencies": {

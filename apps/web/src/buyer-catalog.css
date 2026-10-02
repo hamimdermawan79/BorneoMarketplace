@@ -1,0 +1,104 @@
+/* Compact catalog and product ordering, without changing other buyer pages. */
+.app-shell.role-buyer .workspace>main .catalog-panel {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none
+}
+.app-shell.role-buyer .catalog-toolbar { gap: 12px; margin-bottom: 12px }
+.app-shell.role-buyer .category-filter { margin-bottom: 16px }
+.app-shell.role-buyer .catalog-panel .product-grid { grid-template-columns: repeat(auto-fill,minmax(172px,1fr)); gap: 12px; align-items: stretch }
+.app-shell.role-buyer .catalog-product { min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible }
+.app-shell.role-buyer .catalog-product>.product-image { display: block; aspect-ratio: 1; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: #eaf3f8 }
+.app-shell.role-buyer .catalog-product>.product-image img { width: 100%; height: 100%; border: 0; border-radius: inherit; object-fit: cover; object-position: center }
+.app-shell.role-buyer .catalog-product>div:last-child { padding: 8px 0 4px; gap: 3px; line-height: 1.5 }
+.app-shell.role-buyer .catalog-product h2 { margin: 0; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere }
+.app-shell.role-buyer .catalog-product p { font-size: 12px; overflow-wrap: anywhere }
+.app-shell.role-buyer .catalog-product small { font-size: 11px; color: var(--ui-muted) }
+.app-shell.role-buyer .catalog-floating-actions {
+  position: fixed;
+  z-index: 35;
+  right: 28px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px
+}
+.app-shell.role-buyer .catalog-floating-actions>.catalog-fab {
+  position: relative;
+  inset: auto;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  min-height: 54px;
+  padding: 0;
+  border: 1px solid #9bc7df;
+  border-radius: 16px;
+  color: #245d7c;
+  background: linear-gradient(135deg,#dceff9,#b6d9ed);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.75),0 4px 14px rgba(36,73,98,.12);
+  transition: transform 180ms ease,box-shadow 180ms ease
+}
+.app-shell.role-buyer .catalog-floating-actions>.request-fab { background: linear-gradient(135deg,#f9fdff,#deedf7) }
+.app-shell.role-buyer[data-page="catalog"] .workspace>main { padding-bottom: 156px }
+.app-shell.role-buyer .modal-card.product-order-dialog {
+  width: min(100%,320px);
+  max-height: calc(100dvh - 32px);
+  border-radius: 16px;
+  overflow: auto;
+  background: #fafdff;
+  box-shadow: 0 12px 36px rgba(25,63,87,.16)
+}
+.app-shell.role-buyer .product-order-dialog>header {
+  display: grid;
+  grid-template-columns: 40px minmax(0,1fr) 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 8px;
+  border: 0;
+  background: transparent
+}
+.app-shell.role-buyer .product-order-dialog>header img { width: 40px; height: 40px; border: 0; border-radius: 8px; object-fit: cover; background: #eaf3f8 }
+.app-shell.role-buyer .product-order-dialog h2 { margin: 0 0 3px; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere }
+.app-shell.role-buyer .product-order-dialog header p { margin: 0; font-size: 12px; color: var(--ui-muted); line-height: 1.5 }
+.app-shell.role-buyer .product-order-dialog .product-order-close { display: grid; place-items: center; align-self: start; min-height: 44px; padding: 0; border: 0; background: transparent }
+.app-shell.role-buyer .product-order-dialog>form { padding: 0 12px 12px }
+.app-shell.role-buyer .product-order-dialog header .product-order-stock { margin: 2px 0 0; color: var(--ui-muted); font-size: 11px; line-height: 1.5 }
+.app-shell.role-buyer .product-order-quantity { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px }
+.app-shell.role-buyer .product-order-quantity>label { color: var(--ui-ink); font-size: 13px; font-weight: 500 }
+.app-shell.role-buyer .product-order-quantity>label span { color: var(--ui-muted); font-size: 12px }
+.app-shell.role-buyer .product-quantity-controls { display: flex; align-items: center; gap: 8px }
+.app-shell.role-buyer .product-quantity-controls button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; min-height: 32px; padding: 0; border: 0; background: #eaf3f8; color: #245d7c; border-radius: 8px }
+/* Smaller visible controls retain a forgiving 44px tap area. */
+.app-shell.role-buyer .product-quantity-controls button::after { content: ''; position: absolute; inset: -6px }
+.app-shell.role-buyer .workspace>main .product-order-dialog .product-quantity-controls input { width: 48px; height: 32px; min-height: 32px; padding: 0 3px; border: 1px solid var(--ui-line); border-radius: 8px; background: #fff; text-align: center; font-size: 16px; appearance: textfield }
+.app-shell.role-buyer .product-quantity-controls input::-webkit-inner-spin-button,
+.app-shell.role-buyer .product-quantity-controls input::-webkit-outer-spin-button { appearance: none; margin: 0 }
+.app-shell.role-buyer .product-order-note { margin: 10px 0 0; color: var(--ui-muted); font-size: 12px; line-height: 1.5 }
+.app-shell.role-buyer .product-quantity-error { margin: 8px 0 0; color: var(--ui-danger); font-size: 12px; line-height: 1.5 }
+.app-shell.role-buyer .product-order-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-top: 8px; margin: 10px 0; border-top: 1px solid var(--ui-line); font-size: 12px; color: var(--ui-muted) }
+.app-shell.role-buyer .product-order-total strong { color: var(--ui-ink); font-size: 15px; overflow-wrap: anywhere; text-align: right }
+.app-shell.role-buyer .product-order-dialog .product-order-submit { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px; font-size: 13px }
+@media (max-width:760px) {
+  .app-shell.role-buyer .catalog-panel .product-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px }
+  .app-shell.role-buyer .catalog-product>.product-image { padding: 0 }
+  .app-shell.role-buyer .catalog-product>div:last-child { padding: 8px 0 4px }
+  .app-shell.role-buyer .catalog-floating-actions { right: 16px; bottom: calc(98px + env(safe-area-inset-bottom)) }
+  .app-shell.role-buyer[data-page="catalog"] .workspace>main { padding-bottom: calc(232px + env(safe-area-inset-bottom)) }
+  .app-shell.role-buyer .product-order-backdrop { padding: 12px; place-items: center }
+}
+@media (hover:hover) {
+  .app-shell.role-buyer .catalog-floating-actions>.catalog-fab:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.75),0 6px 18px rgba(36,73,98,.16); transform: translateY(-2px) }
+}
+@media (prefers-reduced-motion:reduce) {
+  .app-shell.role-buyer .catalog-floating-actions>.catalog-fab { transition: none; transform: none }
+}
+@media (prefers-reduced-motion:no-preference) {
+  .app-shell.role-buyer .product-order-dialog { animation: product-order-enter 180ms ease-out }
+}
+@keyframes product-order-enter {
+  from { opacity: .6; transform: translateY(8px) scale(.985) }
+  to { opacity: 1; transform: translateY(0) scale(1) }
+}

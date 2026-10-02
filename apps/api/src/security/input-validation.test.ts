@@ -23,7 +23,7 @@ describe('untrusted management input', () => {
     for (const input of ['javascript:alert(1)', 'data:image/svg+xml;base64,PHN2Zz4=', 'data:image/png;base64,PHNjcmlwdD4=', '/assets/../../secret.png', 'https://evil.test/track.png', '//evil.test/a.png']) {
       expect(productImageInput.safeParse(input).success).toBe(false);
     }
-    expect(productImageInput.safeParse('/assets/produk/telur.jpg').success).toBe(true);
+    expect(productImageInput.safeParse('/assets/produk/telur.jpg').success).toBe(false);
     const png='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aLAAAAABJRU5ErkJggg==';
     expect(productImageInput.safeParse(png).success).toBe(true);
   });

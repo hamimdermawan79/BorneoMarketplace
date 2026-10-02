@@ -3,7 +3,9 @@ import {promisify} from 'node:util';
 import {mkdir,stat,chmod} from 'node:fs/promises';
 import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {apiDirectory,maintenanceUrl} from './maintenance.js';
+import {apiDirectory,maintenanceUrl,maintenancePool} from './maintenance.js';
+import '../config.js';
+import {backupPrivateProductImages} from '../images/backup.js';
 
 const url=new URL(maintenanceUrl());
 const directory=join(apiDirectory,'backups');
@@ -18,7 +20,12 @@ try{
   });
   if((await stat(file)).size===0)throw new Error('Empty backup');
   await chmod(file,0o600);
-  console.log(`Backup created: ${file}`);
+  const db=maintenancePool();
+  try{
+    const images=(await db.query("SELECT image_path FROM product_templates WHERE image_path LIKE '/api/product-images/%'")).rows;
+    const count=await backupPrivateProductImages(images.map(row=>row.image_path),`${file}.media`);
+    console.log(`Backup created: ${file}; ${count} private images copied to its .media directory.`);
+  }finally{await db.end();}
 }catch{
   throw new Error('Backup failed. Check PostgreSQL tooling and credentials; no data was changed.');
 }

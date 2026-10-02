@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { PoolClient } from 'pg';
 import { boundedTotal, checkoutInput, MAX_TOTAL, priceInput, quantityInput, referenceNumber } from './order-input.js';
 
 const productId='a4b311aa-27e5-4e85-9238-d2e5fc7d5a00';
@@ -30,9 +31,14 @@ describe('validasi pesanan dan harga',()=>{
     expect(()=>boundedTotal(Infinity)).toThrow();
     expect(()=>boundedTotal(-1)).toThrow();
   });
-  it('menggunakan UUID penuh untuk nomor referensi',()=>{
-    const numbers=Array.from({length:1000},()=>referenceNumber('ORD'));
-    expect(new Set(numbers).size).toBe(numbers.length);
-    expect(numbers[0]).toMatch(/^ORD-\d{8}-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  it('formats compact database references without truncating larger numbers',async()=>{
+    const query=vi.fn().mockResolvedValueOnce({rows:[{number:'1'}]})
+      .mockResolvedValueOnce({rows:[{number:'2'}]})
+      .mockResolvedValueOnce({rows:[{number:'1000000'}]});
+    const client={query} as unknown as Pick<PoolClient,'query'>;
+    expect(await referenceNumber('ORD',client)).toBe('INV-000001');
+    expect(await referenceNumber('REQ',client)).toBe('REQ-000002');
+    expect(await referenceNumber('ORD',client)).toBe('INV-1000000');
+    expect(query).toHaveBeenCalledWith("SELECT nextval('public.document_reference_seq')::text AS number");
   });
 });

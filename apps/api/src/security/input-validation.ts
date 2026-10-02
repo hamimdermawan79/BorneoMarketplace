@@ -36,9 +36,8 @@ function isRasterImage(value: string) {
 
 export const productImageInput = z.string().trim().max(750_000).refine(value => {
   if (value.startsWith('data:')) return isRasterImage(value);
-  // Only application assets are permitted; no tracking URLs, SVG scripts or local paths.
-  return value.length <= 300 && /^\/assets\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9 _.-]+\.(?:png|jpe?g|webp)$/i.test(value)
-    && !value.includes('..');
+  // File names and private paths are assigned by the server, not the caller.
+  return false;
 }, 'Gunakan gambar PNG, JPEG atau WebP yang valid.');
 
 export function generateTemporaryPassword() {

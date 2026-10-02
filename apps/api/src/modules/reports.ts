@@ -40,6 +40,6 @@ export async function reportRoutes(app:FastifyInstance){
   app.get('/reports/sales.pdf',{preHandler:allow('SUPERADMIN','ADMIN')},async(request,reply)=>{
     const rows=await reportRows(request.user,request.query);
     const pdf=await salesPdf(rows,filters.parse(request.query));
-    reply.header('Content-Type','application/pdf').header('Content-Disposition','attachment; filename="laporan-penjualan-borneo.pdf"');return reply.send(pdf);
+    reply.header('Content-Type','application/pdf').header('Content-Disposition','attachment; filename="laporan-keuangan-borneo.pdf"');return reply.send(pdf);
   });
 }

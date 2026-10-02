@@ -8,6 +8,7 @@ import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import pg from 'pg';
 import {config} from '../config.js';
+import {backupPrivateProductImages} from '../images/backup.js';
 import {pool} from '../database/client.js';
 import {allow} from '../types.js';
 import {passwordInput} from '../security/input-validation.js';
@@ -16,7 +17,8 @@ const tables=['special_requests','inventory_movements','order_status_history','o
 export async function resetRoutes(app:FastifyInstance){
   let resetInProgress=false;
   const maintenanceUrl=()=>{
-    if(process.env.NODE_ENV==='production'||process.env.ALLOW_DATA_RESET!=='true'||!process.env.DATA_RESET_DATABASE_URL)return null;
+    // Production is supported; explicit maintenance credentials and all reset checks still apply.
+    if(process.env.ALLOW_DATA_RESET!=='true'||!process.env.DATA_RESET_DATABASE_URL)return null;
     try{
       const database=new URL(process.env.DATA_RESET_DATABASE_URL);const runtime=new URL(config.DATABASE_URL);
       if(!['postgres:','postgresql:'].includes(database.protocol)||!['localhost','127.0.0.1','[::1]'].includes(database.hostname))return null;
@@ -55,7 +57,9 @@ export async function resetRoutes(app:FastifyInstance){
         await promisify(execFile)(process.env.PG_DUMP_PATH||'pg_dump',['--format=custom','--file',path],{timeout:120000,windowsHide:true,env:{...process.env,PGHOST:db.hostname,PGPORT:db.port||'5432',PGDATABASE:decodeURIComponent(db.pathname.slice(1)),PGUSER:decodeURIComponent(db.username),PGPASSWORD:decodeURIComponent(db.password)}});
         if((await stat(path)).size===0)throw Error('Empty backup');
         await chmod(path,0o600);
-      }catch{throw Object.assign(new Error('Backup gagal. Tidak ada data yang dihapus. Periksa konfigurasi pg_dump.'),{statusCode:503})}
+        const images=(await client.query("SELECT image_path FROM product_templates WHERE image_path LIKE '/api/product-images/%'")).rows;
+        await backupPrivateProductImages(images.map(row=>row.image_path),`${path}.media`);
+      }catch{throw Object.assign(new Error('Backup database atau foto produk gagal. Tidak ada data yang dihapus. Periksa pg_dump dan storage gambar.'),{statusCode:503})}
       for(const table of tables)await client.query(`DELETE FROM ${table}`);
       await client.query('DELETE FROM product_templates WHERE owner_admin_user_id IS NOT NULL');
       await client.query("DELETE FROM users WHERE role<>'SUPERADMIN'");

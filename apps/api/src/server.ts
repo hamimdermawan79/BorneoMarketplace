@@ -15,12 +15,15 @@ import { reportRoutes } from './modules/reports.js';
 import { managementRoutes } from './modules/management.js';
 import { specialRequestRoutes } from './modules/special-requests.js';
 import { resetRoutes } from './modules/reset.js';
+import { imageRoutes } from './modules/images.js';
+import { websiteRoutes } from './modules/website.js';
+import {accountRoutes} from './modules/accounts.js';
 
 export async function buildApp() {
   if (config.NODE_ENV === 'production') await assertRuntimeDatabaseRole();
   const app = Fastify({
     logger: config.NODE_ENV === 'test' ? false : {
-      redact: { paths: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]', 'password', 'password_hash', 'token', 'DATABASE_URL', 'JWT_SECRET'], censor: '[REDACTED]' },
+      redact: { paths: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]', 'password', 'currentPassword', 'newPassword', 'req.body.password', 'req.body.currentPassword', 'req.body.newPassword', 'password_hash', 'token', 'DATABASE_URL', 'JWT_SECRET'], censor: '[REDACTED]' },
       // Avoid query-string secrets in request logs, including unknown URLs.
       serializers: { req: request => ({ method: request.method, url: request.url?.split('?')[0], remoteAddress: request.ip }) }
     },
@@ -56,12 +59,15 @@ export async function buildApp() {
   app.get('/api/health', async () => { await pool.query('SELECT 1'); return { status: 'ok' }; });
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(catalogRoutes, { prefix: '/api' });
+  await app.register(imageRoutes, { prefix: '/api' });
   await app.register(clusterRoutes, { prefix: '/api' });
   await app.register(orderRoutes, { prefix: '/api' });
   await app.register(reportRoutes, { prefix: '/api' });
   await app.register(managementRoutes, { prefix: '/api' });
   await app.register(specialRequestRoutes, { prefix: '/api' });
   await app.register(resetRoutes, { prefix: '/api' });
+  await app.register(websiteRoutes, { prefix: '/api' });
+  await app.register(accountRoutes, {prefix:'/api'});
   return app;
 }
 

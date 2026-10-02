@@ -5,7 +5,7 @@ import { pool } from './database/client.js';
 import { config } from './config.js';
 
 export type Role = 'SUPERADMIN' | 'ADMIN' | 'BUYER';
-export type AuthUser = { id: string; role: Role; organizationId: string | null; email: string };
+export type AuthUser = { id: string; role: Role; organizationId: string | null; email: string | null };
 export type AuthClaims = AuthUser & { credentialVersion: string };
 
 const claimsSchema = z.object({

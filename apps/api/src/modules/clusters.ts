@@ -3,8 +3,8 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { pool, withTransaction } from '../database/client.js';
 import { allow } from '../types.js';
-import { randomBytes } from 'node:crypto';
-import { generateTemporaryPassword, mapsUrlInput } from '../security/input-validation.js';
+import { usernameInput, optionalEmailInput, optionalMapsUrlInput } from '../security/user-input.js';
+import { generateTemporaryPassword } from '../security/input-validation.js';
 
 export async function clusterRoutes(app: FastifyInstance) {
   app.get('/clusters', { preHandler: allow('SUPERADMIN') }, async () => {
@@ -28,16 +28,15 @@ export async function clusterRoutes(app: FastifyInstance) {
   });
 
   app.post('/partners',{preHandler:allow('ADMIN')},async(request)=>{
-    const input=z.object({name:z.string().trim().min(2).max(120),phone:z.string().trim().min(6).max(30),address:z.string().trim().min(5).max(300),gmapsUrl:mapsUrlInput}).parse(request.body);
-    const base=input.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'.').replace(/^\.|\.$/g,'')||'dapur';
-    const email=`${base.slice(0,48)}.${randomBytes(8).toString('hex')}@borneo.local`;
+    const input=z.object({username:usernameInput,email:optionalEmailInput,name:z.string().trim().min(2).max(120),phone:z.string().trim().min(6).max(30),address:z.string().trim().min(5).max(300),gmapsUrl:optionalMapsUrlInput}).parse(request.body);
+    const {username,email}=input;
     const temporaryPassword=generateTemporaryPassword();const passwordHash=await bcrypt.hash(temporaryPassword,12);
     return withTransaction(async client=>{
       const kitchen=(await client.query(`INSERT INTO organizations(type,name,phone,address,gmaps_url) VALUES('KITCHEN',$1,$2,$3,$4) RETURNING id`,[input.name,input.phone,input.address,input.gmapsUrl])).rows[0];
-      const user=(await client.query(`INSERT INTO users(organization_id,full_name,email,password_hash,role) VALUES($1,$2,$3,$4,'BUYER') RETURNING id`,[kitchen.id,input.name,email,passwordHash])).rows[0];
+      const user=(await client.query(`INSERT INTO users(organization_id,full_name,email,password_hash,role,username) VALUES($1,$2,$3,$4,'BUYER',$5) RETURNING id`,[kitchen.id,input.name,email,passwordHash,username])).rows[0];
       await client.query('INSERT INTO admin_kitchens(admin_user_id,kitchen_id) VALUES($1,$2)',[request.user.id,kitchen.id]);
       await client.query(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,changes) VALUES($1,'CREATE','PARTNER',$2,$3)`,[request.user.id,user.id,JSON.stringify({kitchenId:kitchen.id,email})]);
-      return{success:true,email,temporaryPassword,kitchenId:kitchen.id,userId:user.id};
+      return{success:true,username,email,temporaryPassword,kitchenId:kitchen.id,userId:user.id};
     });
   });
 

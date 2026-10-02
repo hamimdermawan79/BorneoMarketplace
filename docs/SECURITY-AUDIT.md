@@ -11,7 +11,7 @@ Tanggal: 30 September 2026. Lingkup: source API, autentikasi, otorisasi cluster,
 | Tinggi | Permintaan paralel bisa menggandakan pengiriman/pembatalan dan perubahan stok | Kunci baris pesanan sebelum validasi status, urutan kunci produk konsisten, transaksi atomik, dan kunci idempotensi checkout. |
 | Tinggi | Klaim token dapat tertinggal setelah akun berubah | Verifikasi status akun/organisasi dan role setiap request; organisasi diambil ulang; perubahan hash password membatalkan token lama. |
 | Tinggi | Login tanpa pembatasan dan password mitra baru dapat diprediksi | Rate limit login dan API; password mitra acak sekali tampil; password demo ditolak pada production. |
-| Tinggi | Reset web memiliki akses sangat luas | Konfigurasi eksplisit untuk demo lokal saja, koneksi maintenance terpisah ke database yang sama, verifikasi password sebelum kunci, backup wajib, rate limit; ditolak di production. |
+| Tinggi | Reset web memiliki akses sangat luas | Konfigurasi eksplisit, koneksi maintenance terpisah ke database lokal yang sama, verifikasi password sebelum kunci, backup wajib dan rate limit. Atas permintaan pemilik, reset juga dapat diaktifkan di production. |
 | Sedang | Input angka, gambar dan tautan terlalu longgar | Batas panjang/ukuran/presisi, validasi URL/gambar, total finansial terbatas, constraints saldo stok dan kepemilikan relasi. |
 | Sedang | Ekspor berpotensi memakai memori berlebihan | Maksimum 10.000 baris; permintaan lebih besar ditolak dan perlu dipersempit intervalnya. XML dibersihkan dari karakter kontrol. |
 | Sedang | Respons/log dapat membocorkan informasi internal | Error server generik, redaksi token/kredensial, query string tidak dicatat, no-store dan header API. |
@@ -48,7 +48,7 @@ Gunakan langkah README. Setelah hardening sesi, login ulang diperlukan. File `.e
 
 Backup: jalankan `npm run db:backup`. Jika `pg_dump` tidak ada di PATH, set `PG_DUMP_PATH` ke executable PostgreSQL yang sesuai. Simpan salinan terenkripsi di luar mesin, tentukan retensi, dan uji restore secara berkala pada database terpisah. Jangan menaruh backup di folder public/dist.
 
-Reset demonstrasi dinonaktifkan secara default. Untuk mengaktifkan hanya pada mesin demo, operator perlu menyediakan `ALLOW_DATA_RESET=true`, `DATA_RESET_DATABASE_URL` milik maintenance untuk database lokal yang sama, dan executable `pg_dump`; restart API. Tetap wajib password superadmin dan teks persis `Ya, Saya Yakin Untuk Hapus Semua Data.`. Jangan memberikan kredensial maintenance ke server production demi mengaktifkan tombol reset.
+Reset tersedia untuk superadmin di development maupun production jika `ALLOW_DATA_RESET=true`, `DATA_RESET_DATABASE_URL` menunjuk database lokal yang sama, dan `PG_DUMP_PATH` valid. Restart API setelah mengubah konfigurasi. Tetap wajib password superadmin, teks persis `Ya, Saya Yakin Untuk Hapus Semua Data.`, dan backup sukses sebelum penghapusan. Koneksi reset memiliki hak lebih tinggi; simpan hanya sebagai secret server. Jangan gunakan koneksi tersebut sebagai DATABASE_URL runtime.
 
 ### Checklist sebelum VPS / data asli
 
@@ -56,7 +56,7 @@ Reset demonstrasi dinonaktifkan secara default. Untuk mengaktifkan hanya pada me
 2. Jalankan `npm ci` dan build. Pada proses maintenance tersendiri, set `NODE_ENV=production` dan `MIGRATION_DATABASE_URL`, lalu jalankan `npm run db:migrate`.
 3. Provision role runtime dengan hak minimum. `npm run db:secure` tersedia untuk PostgreSQL loopback yang role-nya belum ada; jangan menjalankannya untuk merotasi role existing. Tabel baru pada migrasi berikutnya perlu grant eksplisit setelah ditinjau, bukan default grant luas.
 4. Pada database baru yang belum punya akun, set `BOOTSTRAP_EMAIL` dan `BOOTSTRAP_PASSWORD` unik (minimal 12 karakter, maksimal 72 byte), jalankan `npm run db:bootstrap` pada proses maintenance. Jangan jalankan `db:seed`.
-5. Proses API hanya menerima DATABASE_URL runtime, JWT_SECRET acak minimal 48 karakter, NODE_ENV=production, WEB_ORIGIN HTTPS yang tepat, HOST=127.0.0.1. Jangan salin `.env` maintenance ke deployment atau membuatnya dapat dibaca user layanan API. Hapus variabel bootstrap/migrasi dari proses layanan.
+5. Proses API hanya menerima DATABASE_URL runtime, JWT_SECRET acak minimal 48 karakter, NODE_ENV=production, WEB_ORIGIN HTTPS yang tepat, HOST=127.0.0.1. Jangan salin `.env` maintenance ke deployment atau membuatnya dapat dibaca user layanan API. Hapus variabel bootstrap/migrasi dari proses layanan. Jika fitur reset diperlukan, berikan DATA_RESET_DATABASE_URL sebagai secret terpisah dengan akses file terbatas.
 6. Jalankan API sebagai user OS non-root; batasi direktori dan izin baca secret. Publikasikan **hanya** `apps/web/dist` lewat reverse proxy HTTPS, bukan root repository. API/port 4000 dan PostgreSQL/5432 tidak boleh terbuka ke internet.
 7. Proxy harus menimpa X-Forwarded-For dari alamat klien, bukan mempercayai header klien. Set TRUST_PROXY=loopback hanya jika reverse proxy lokal adalah satu-satunya jalur publik. Untuk beberapa instance API, pakai penyimpanan rate limit bersama; limiter sekarang per proses.
 8. Batasi listen_addresses PostgreSQL ke loopback jika satu VPS; gunakan firewall, SCRAM, dan TLS untuk database terpisah. Batasi maintenance login hanya ke operator.

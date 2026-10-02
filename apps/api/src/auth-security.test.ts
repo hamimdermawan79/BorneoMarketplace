@@ -102,7 +102,7 @@ describe('login and API protections', () => {
     const invalid = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { ...payload, password: 'x' } });
     for (const response of [unknown, disabled, inactiveOrg, invalid]) {
       expect(response.statusCode).toBe(401);
-      expect(response.json()).toEqual({ message: 'Email atau password tidak sesuai.' });
+      expect(response.json()).toEqual({ message: 'Username/email atau password tidak sesuai.' });
     }
   });
 

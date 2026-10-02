@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 export const MAX_QUANTITY = 1_000_000;
@@ -27,8 +27,9 @@ export const checkoutInput = z.object({
   path: ['items'], message: 'Produk yang sama hanya boleh dicantumkan sekali.',
 });
 
-export function referenceNumber(prefix: 'ORD' | 'REQ') {
-  return `${prefix}-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${randomUUID()}`;
+export async function referenceNumber(prefix: 'ORD' | 'REQ', client: Pick<PoolClient, 'query'>) {
+  const { rows } = await client.query("SELECT nextval('public.document_reference_seq')::text AS number");
+  return `${prefix === 'ORD' ? 'INV' : prefix}-${rows[0].number.padStart(6, '0')}`;
 }
 
 export function boundedTotal(value: number) {

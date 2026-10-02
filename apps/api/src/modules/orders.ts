@@ -38,7 +38,7 @@ export async function orderRoutes(app:FastifyInstance){
         WHERE ak.kitchen_id=$1 FOR SHARE OF ak,manager,kitchen`,[request.user.organizationId]);
       if(!assigned.rowCount) throw Object.assign(new Error('Dapur belum memiliki admin pengelola.'),{statusCode:409});
       const adminId=assigned.rows[0].admin_user_id;
-      const orderNo=referenceNumber('ORD');
+      const orderNo=await referenceNumber('ORD',client);
       const order=(await client.query(`INSERT INTO orders(order_no,kitchen_id,admin_user_id,needed_date,note,idempotency_key,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,order_no`,[orderNo,request.user.organizationId,adminId,input.neededDate,input.note||null,input.idempotencyKey,request.user.id])).rows[0];
       let estimatedTotal=0;
       const products=await client.query(`SELECT ap.id,ap.sale_price,pt.name,pt.order_unit,pt.price_unit,pt.weighing_required,pt.estimated_kg_per_unit
@@ -80,11 +80,12 @@ export async function orderRoutes(app:FastifyInstance){
     if(request.user.role==='ADMIN'){params.push(request.user.id);scope=`WHERE o.admin_user_id=$1`;}
     if(request.user.role==='BUYER'){params.push(request.user.organizationId);scope=`WHERE o.kitchen_id=$1`;}
     const {rows}=await pool.query(`SELECT o.id,o.order_no AS "orderNo",o.status,o.needed_date AS "neededDate",o.estimated_total AS "estimatedTotal",o.final_total AS "finalTotal",o.created_at AS "createdAt",k.name AS kitchen,
+      COALESCE(o.final_total,SUM(COALESCE(oi.final_total,oi.estimated_total)),0) AS "currentTotal",
       COALESCE(json_agg(json_build_object('id',oi.id,'name',oi.product_name,'quantity',oi.ordered_quantity,'orderUnit',oi.order_unit,'priceUnit',oi.price_unit,'unitPrice',oi.unit_price,'estimatedWeightKg',oi.estimated_weight_kg,'actualWeightKg',oi.actual_weight_kg,'prepared',oi.prepared,'allocations',(
-        SELECT COALESCE(json_agg(json_build_object('id',a.id,'source',a.source,'vendor',v.name,'quantity',COALESCE(a.actual_quantity,a.reserved_quantity),'prepared',a.prepared)),'[]') FROM order_item_allocations a LEFT JOIN vendors v ON v.id=a.vendor_id WHERE a.order_item_id=oi.id
-      ))) FILTER(WHERE oi.id IS NOT NULL),'[]') AS items
+        SELECT COALESCE(json_agg(json_build_object('id',a.id,'source',a.source,'vendor',v.name,'quantity',COALESCE(a.actual_quantity,a.reserved_quantity),'prepared',a.prepared) ORDER BY a.id),'[]') FROM order_item_allocations a LEFT JOIN vendors v ON v.id=a.vendor_id WHERE a.order_item_id=oi.id
+      )) ORDER BY oi.product_name,oi.id) FILTER(WHERE oi.id IS NOT NULL),'[]') AS items
       FROM orders o JOIN organizations k ON k.id=o.kitchen_id LEFT JOIN order_items oi ON oi.order_id=o.id ${scope}
-      GROUP BY o.id,k.name ORDER BY o.needed_date DESC,o.created_at DESC`,params);
+      GROUP BY o.id,k.name ORDER BY o.needed_date DESC,o.created_at DESC,o.id`,params);
     return rows;
   });
 

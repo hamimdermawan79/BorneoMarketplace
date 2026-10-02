@@ -3,12 +3,14 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { pool, withTransaction } from '../database/client.js';
 import { allow } from '../types.js';
-import { mapsUrlInput, passwordInput } from '../security/input-validation.js';
+import { passwordInput } from '../security/input-validation.js';
 
-const baseUser=z.object({fullName:z.string().trim().min(2).max(120),email:z.string().trim().max(254).email().transform(value=>value.toLowerCase()),password:passwordInput});
+import { usernameInput, optionalEmailInput, optionalMapsUrlInput } from '../security/user-input.js';
+
+const baseUser=z.object({fullName:z.string().trim().min(2).max(120),username:usernameInput,email:optionalEmailInput,password:passwordInput});
 const createUserSchema=z.discriminatedUnion('role',[
   baseUser.extend({role:z.literal('ADMIN')}),
-  baseUser.extend({role:z.literal('BUYER'),kitchen:z.object({name:z.string().trim().min(2).max(120),phone:z.string().trim().min(6).max(30),address:z.string().trim().min(5).max(300),gmapsUrl:mapsUrlInput,adminId:z.string().uuid().nullable().optional()})})
+  baseUser.extend({role:z.literal('BUYER'),kitchen:z.object({name:z.string().trim().min(2).max(120),phone:z.string().trim().min(6).max(30),address:z.string().trim().min(5).max(300),gmapsUrl:optionalMapsUrlInput,adminId:z.string().uuid().nullable().optional()})})
 ]);
 
 export async function managementRoutes(app:FastifyInstance){
@@ -31,7 +33,7 @@ export async function managementRoutes(app:FastifyInstance){
   });
 
   app.get('/users',{preHandler:allow('SUPERADMIN')},async()=>{
-    const {rows}=await pool.query(`SELECT u.id,u.full_name AS name,u.email,u.role,u.active,u.created_at AS "createdAt",o.id AS "organizationId",o.name AS organization,o.phone,o.address,o.gmaps_url AS "gmapsUrl",
+    const {rows}=await pool.query(`SELECT u.id,u.full_name AS name,u.username,u.email,u.role,u.active,u.created_at AS "createdAt",o.id AS "organizationId",o.name AS organization,o.phone,o.address,o.gmaps_url AS "gmapsUrl",
       manager.id AS "managerId",manager.full_name AS manager
       FROM users u LEFT JOIN organizations o ON o.id=u.organization_id
       LEFT JOIN admin_kitchens ak ON ak.kitchen_id=o.id AND u.role='BUYER'
@@ -61,8 +63,8 @@ export async function managementRoutes(app:FastifyInstance){
   app.post('/users',{preHandler:allow('SUPERADMIN')},async(request,reply)=>{
     const input=createUserSchema.parse(request.body);const passwordHash=await bcrypt.hash(input.password,12);
     try{return await withTransaction(async client=>{
-      const existing=await client.query('SELECT 1 FROM users WHERE email=$1',[input.email]);
-      if(existing.rowCount)throw Object.assign(new Error('Email sudah digunakan.'),{statusCode:409});
+      const existing=await client.query('SELECT 1 FROM users WHERE email=$1 OR username=$2',[input.email,input.username]);
+      if(existing.rowCount)throw Object.assign(new Error('Username atau email sudah digunakan.'),{statusCode:409});
       let organizationId:string;
       if(input.role==='ADMIN'){
         const cooperative=await client.query(`SELECT id FROM organizations WHERE type='COOPERATIVE' AND active ORDER BY created_at LIMIT 1`);
@@ -72,11 +74,11 @@ export async function managementRoutes(app:FastifyInstance){
         const kitchen=(await client.query(`INSERT INTO organizations(type,name,phone,address,gmaps_url) VALUES('KITCHEN',$1,$2,$3,$4) RETURNING id`,[input.kitchen.name,input.kitchen.phone,input.kitchen.address,input.kitchen.gmapsUrl])).rows[0];organizationId=kitchen.id;
         if(input.kitchen.adminId){const admin=await client.query(`SELECT 1 FROM users WHERE id=$1 AND role='ADMIN' AND active`,[input.kitchen.adminId]);if(!admin.rowCount)throw Object.assign(new Error('Admin pengelola tidak ditemukan.'),{statusCode:404});await client.query('INSERT INTO admin_kitchens(admin_user_id,kitchen_id) VALUES($1,$2)',[input.kitchen.adminId,organizationId]);}
       }
-      const user=(await client.query(`INSERT INTO users(organization_id,full_name,email,password_hash,role) VALUES($1,$2,$3,$4,$5) RETURNING id,full_name AS name,email,role,active`,[organizationId,input.fullName,input.email,passwordHash,input.role])).rows[0];
+      const user=(await client.query(`INSERT INTO users(organization_id,full_name,email,password_hash,role,username) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,full_name AS name,username,email,role,active`,[organizationId,input.fullName,input.email,passwordHash,input.role,input.username])).rows[0];
       if(input.role==='ADMIN')await client.query(`INSERT INTO admin_products(admin_user_id,template_id,sale_price) SELECT $1,id,0 FROM product_templates WHERE active AND owner_admin_user_id IS NULL ON CONFLICT(admin_user_id,template_id) DO NOTHING`,[user.id]);
       await client.query(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,changes) VALUES($1,'CREATE','USER',$2,$3)`,[request.user.id,user.id,JSON.stringify({role:input.role,email:input.email})]);
       return user;
-    });}catch(error){const known=error as Error&{statusCode?:number;code?:string};if(known.code==='23505')return reply.code(409).send({message:'Email atau nama dapur sudah digunakan.'});throw error;}
+    });}catch(error){const known=error as Error&{statusCode?:number;code?:string};if(known.code==='23505')return reply.code(409).send({message:'Username, email, atau nama dapur sudah digunakan.'});throw error;}
   });
 
   app.patch('/users/:id',{preHandler:allow('SUPERADMIN')},async(request,reply)=>{

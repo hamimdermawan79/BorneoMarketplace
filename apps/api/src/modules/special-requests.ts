@@ -22,7 +22,7 @@ export async function specialRequestRoutes(app:FastifyInstance){
         JOIN organizations kitchen ON kitchen.id=ak.kitchen_id AND kitchen.active AND kitchen.type='KITCHEN'
         WHERE ak.kitchen_id=$1 FOR SHARE OF ak,manager,kitchen`,[request.user.organizationId]);
       if(!assigned.rowCount)throw Object.assign(new Error('Dapur belum memiliki admin pengelola.'),{statusCode:409});
-      const requestNo=referenceNumber('REQ');
+      const requestNo=await referenceNumber('REQ',client);
       const {rows}=await client.query(`INSERT INTO special_requests(request_no,kitchen_id,admin_user_id,name,quantity,unit,note,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,request_no AS "requestNo"`,[requestNo,request.user.organizationId,assigned.rows[0].admin_user_id,input.name,input.quantity,input.unit,input.note||null,request.user.id]);return rows[0];
     });
   });
@@ -57,7 +57,7 @@ export async function specialRequestRoutes(app:FastifyInstance){
       const template=(await client.query(`INSERT INTO product_templates(sku,name,category,order_unit,price_unit,active,owner_admin_user_id) VALUES($1,$2,'Permintaan Khusus',$3,$3,false,$4) RETURNING id`,[sku,item.name,input.unit,item.admin_user_id])).rows[0];
       const product=(await client.query(`INSERT INTO admin_products(admin_user_id,template_id,sale_price,active) VALUES($1,$2,$3,false) RETURNING id`,[item.admin_user_id,template.id,input.salePrice])).rows[0];
       const batch=(await client.query(`INSERT INTO inventory_batches(admin_product_id,source,vendor_id,quantity_initial,quantity_available,quantity_reserved,cost_price,created_by) VALUES($1,$2,$3,$4,0,$4,$5,$6) RETURNING id`,[product.id,input.source,vendorId,item.quantity,input.costPrice??null,request.user.id])).rows[0];
-      const orderNo=referenceNumber('ORD');
+      const orderNo=await referenceNumber('ORD',client);
       const order=(await client.query(`INSERT INTO orders(order_no,kitchen_id,admin_user_id,needed_date,note,created_by,status,estimated_total) VALUES($1,$2,$3,current_date+1,$4,$5,'PREPARING',$6) RETURNING id`,[orderNo,item.kitchen_id,item.admin_user_id,`Permintaan ${item.request_no}`,item.created_by,total])).rows[0];
       const orderItem=(await client.query(`INSERT INTO order_items(order_id,admin_product_id,product_name,ordered_quantity,order_unit,price_unit,unit_price,estimated_total) VALUES($1,$2,$3,$4,$5,$5,$6,$7) RETURNING id`,[order.id,product.id,item.name,item.quantity,input.unit,input.salePrice,total])).rows[0];
       await client.query(`INSERT INTO order_item_allocations(order_item_id,inventory_batch_id,source,vendor_id,reserved_quantity) VALUES($1,$2,$3,$4,$5)`,[orderItem.id,batch.id,input.source,vendorId,item.quantity]);

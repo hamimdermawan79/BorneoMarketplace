@@ -49,17 +49,51 @@ Halaman `/login` menyediakan pemilih akun demo hanya pada development. Seed dan 
 ## Fitur yang sudah tersedia
 
 - autentikasi JWT dan otorisasi role di API;
+- pengelolaan akun: Superadmin melalui Pengguna & Role, Admin Koperasi melalui Akun Mitra (hanya buyer dalam cluster miliknya), dan buyer melalui Profil (nomor HP dan password sendiri);
+- perubahan identitas, username, email opsional, status, informasi dapur, dan reset password tercatat di audit. Pengalihan admin hanya oleh Superadmin; role tetap dikelola di tabel Pengguna & Role. Akun bersejarah dinonaktifkan, bukan dihapus;
+- reset password membutuhkan password pengelola saat ini, sedangkan perubahan password sendiri membutuhkan password lama. Semua token lama ditolak setelah perubahan password; password/hash tidak disertakan dalam respons atau audit;
 - cluster admin–dapur yang membatasi produk, harga, stok, dan pesanan;
-- Produk Pokok dikelola Superadmin dan otomatis tersedia untuk seluruh Admin Koperasi;
+- Produk Pokok dikelola Superadmin dan otomatis tersedia untuk seluruh Admin Koperasi; sumbernya default `Koperasi` dan hanya Superadmin yang dapat mengubahnya menjadi `Vendor`;
 - Admin dapat menambahkan produk tambahan beserta foto persegi; produk tersebut hanya berlaku pada cluster Admin pembuatnya;
 - pencatatan stok per admin berisi produk, satuan, jumlah, harga jual, serta sumber `Koperasi` atau `Vendor`;
-- sumber stok default adalah `Koperasi`; kolom vendor hanya muncul untuk stok dari luar koperasi, memberi saran nama yang pernah digunakan, dan otomatis menyimpan nama vendor baru;
+- sumber Produk Pokok mengikuti pengaturan Superadmin dan tidak dapat diganti Admin Koperasi; Produk Baru/tambahan tetap boleh memilih sumber sendiri. Perubahan sumber master hanya berlaku untuk penambahan stok berikutnya, tanpa mengubah stok atau transaksi lama;
+- kolom nama vendor hanya muncul untuk sumber `Vendor`, memberi saran nama yang pernah digunakan, dan otomatis menyimpan nama vendor baru;
 - reservasi stok saat checkout dan pengembalian stok saat pembatalan;
 - pemisahan otomatis daftar penyiapan berdasarkan sumber barang;
 - checklist per alokasi sumber, termasuk satu produk yang terbagi ke koperasi dan vendor;
 - telur dalam pcs dan ayam dalam potong, dengan harga, estimasi, serta berat aktual dalam kilogram;
 - alur pesanan tanpa pembayaran: masuk, disiapkan, dikirim, menunggu dapur, selesai;
 - ekspor PDF operasional dan tabel keuangan Excel (`.xls`).
+
+## Gambar produk
+
+Foto dapat diunggah oleh Admin Koperasi maupun Superadmin dalam format PNG, JPG/JPEG, WebP, atau HEIC/HEIF. Server memeriksa isi file, bukan hanya ekstensi (file `.pn` yang sebenarnya PNG juga dapat dipilih). Batas unggahan 8 MB dan 50 megapiksel. Gambar dikonversi menjadi WebP, sisi terpanjang maksimal 1280 px, orientasi disesuaikan, dan metadata dibuang. Editor produk non-pokok tetap menyediakan crop 1:1 dengan hasil 640 × 640 px.
+
+Endpoint `POST /api/images/convert` menerima binary `application/octet-stream`, hanya untuk admin/superadmin. Maksimum 2 konversi bersamaan, timeout 20 detik, dan rate limit 12 unggahan/menit per IP. Proses HEIC dijalankan dalam worker agar tidak memblokir request API lain. Data URL hanya dipakai sementara untuk preview/crop; saat formulir disimpan, API mengonversi ulang gambar dan menyimpan file WebP private. Database menyimpan referensi gambar, bukan base64.
+
+Aset publik dan foto operasional dipisahkan:
+
+```text
+apps/web/public/assets/
+  logo/          logo.webp, favicon.ico
+  background/    background.webp
+  decoration/    pattern1.webp, motif-awan.svg, login-cloud-*.svg
+storage/private/produk/
+  produk-pokok/       <uuid>.webp
+  produk-tambahan/    <uuid>.webp
+```
+
+Foto produk tidak masuk Git atau hasil build frontend. `GET /api/product-images/:jenis/:filename` memeriksa login dan hak akses setiap request; admin hanya dapat membaca Produk Pokok dan produk miliknya, buyer mengikuti admin pengelolanya, superadmin memiliki akses penuh. Frontend mengambil foto menggunakan authorization header, lalu menampilkan blob sementara. Cache gambar bersifat `private, no-store`.
+
+Pada VPS, set `PRODUCT_STORAGE_DIR` ke direktori absolut persistent di luar webroot (misalnya `/var/lib/borneo-marketplace/produk`), dengan akses filesystem hanya untuk service API. Jangan buat Nginx alias/static route ke folder ini; `/api/` diteruskan ke API. Struktur `produk-pokok/produk-tambahan` otomatis dibuat. Saat pindah server, salin folder private bersama database. `npm run db:backup` menyimpan dump beserta foto yang direferensikan ke folder `.dump.media`; hentikan penulisan selama backup agar snapshot DB/file konsisten. File yang tidak lagi direferensikan tidak disajikan dan tidak otomatis dihapus agar backup/restore tetap aman.
+
+Untuk migrasi foto lama: backup dahulu, lalu jalankan `npm run db:images`. CLI mempertahankan referensi yang sudah private, memindahkan data gambar lama ke storage private, dan tidak menghapus sumbernya. Jalankan CLI dengan pengguna OS pemilik storage/service API agar file berizin `0600` tetap dapat dibaca API; kredensial database maintenance hanya diberikan ke proses CLI, bukan server HTTP. Seed demo tidak bergantung pada foto publik.
+
+Untuk aset baru PNG/JPEG, `node scripts/convert-assets.mjs` menghasilkan WebP tanpa menimpa output existing. `npm run assets:organize` merapikan aset branding, membuat favicon dari logo, dan memindahkan PNG pattern yang telah dikonversi ke folder backup. SVG dekoratif tetap SVG.
+
+Pada reverse proxy VPS, izinkan body hingga `8m` untuk `/api/images/convert` dan waktu respons setidaknya 30 detik. Jangan naikkan limit seluruh API tanpa kebutuhan. Gunakan `npm ci` di VPS target agar binary Sharp sesuai OS; jangan salin `node_modules` dari Windows. Engine memakai Sharp dan decoder HEIC portabel, bukan executable ImageMagick eksternal.
+
+Referensi: [Sharp WebP dan metadata](https://sharp.pixelplumbing.com/api-output/), [HEIC converter dan worker](https://github.com/catdad-experiments/heic-convert).
 
 ## Perintah verifikasi
 
