@@ -1,0 +1,22 @@
+.photo-upload{display:flex;align-items:center;gap:16px;min-width:0;padding:16px;border:1px solid var(--line);border-radius:10px;background:#f8fbfe}
+.photo-upload-preview{display:flex;align-items:center;justify-content:center;flex:0 0 80px;width:80px;height:80px;overflow:hidden;border:1px dashed rgba(116,169,203,.35);border-radius:12px;background:transparent;color:#527997}
+.photo-upload-preview img{display:block;width:100%;height:100%;object-fit:contain}
+.photo-upload-content{display:grid;gap:10px;min-width:0}
+.photo-upload-content>strong{font-size:13px;font-weight:600;color:#18344b}
+.photo-upload-content>small{font-size:11px;line-height:1.5;color:#b42318}
+.photo-upload-actions{display:flex;flex-wrap:wrap;gap:8px}
+.photo-upload .photo-upload-actions button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 14px;border:1px solid transparent;border-radius:14px;background:transparent;color:#234f70;font-size:12px;font-weight:600;cursor:pointer;box-shadow:none;transition:background-color 160ms ease,color 160ms ease}
+.photo-upload .photo-upload-actions .photo-upload-remove{border-color:transparent;background:transparent;font-weight:400}
+.photo-upload .photo-upload-actions .photo-upload-pick{background:rgba(103,168,209,.1);border-color:rgba(84,142,182,.32)}
+.photo-upload .photo-upload-actions button:hover:not(:disabled){background:rgba(103,168,209,.12)}
+.photo-upload .photo-upload-actions .photo-upload-pick:hover:not(:disabled){background:rgba(103,168,209,.18);border-color:rgba(84,142,182,.5)}
+.photo-upload .photo-upload-actions button:active:not(:disabled){background:rgba(103,168,209,.2)}
+.photo-upload .photo-upload-actions button:focus-visible{outline:2px solid #4487b6;outline-offset:3px}
+.photo-upload .photo-upload-actions button:disabled{opacity:.5;cursor:wait}
+.photo-upload input[hidden]{display:none!important}
+.photo-upload.photo-upload-centered{flex-direction:column;align-items:center;gap:10px;text-align:center;padding:16px}
+.photo-upload-centered .photo-upload-preview{width:64px;height:64px;flex-basis:64px}
+.photo-upload-centered .photo-upload-content{justify-items:center;gap:8px}
+.photo-upload-centered .photo-upload-actions{justify-content:center}
+@media(max-width:560px){.photo-upload{gap:12px;padding:12px}.photo-upload-preview{width:64px;height:64px;flex-basis:64px}.photo-upload-actions{gap:8px}.photo-upload .photo-upload-actions button{padding-inline:10px}}
+@media(prefers-reduced-motion:reduce){.photo-upload .photo-upload-actions button{transition:none}}

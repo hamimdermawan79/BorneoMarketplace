@@ -2,15 +2,26 @@
   "name": "borneo-marketplace",
   "private": true,
   "version": "0.2.0",
-  "workspaces": ["apps/*"],
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
     "dev": "concurrently -n api,web -c blue,cyan \"npm run dev -w @borneo/api\" \"npm run dev -w @borneo/web\"",
     "build": "npm run build -w @borneo/api && npm run build -w @borneo/web",
     "test": "npm run test -w @borneo/api && npm run test -w @borneo/web",
     "db:migrate": "npm run db:migrate -w @borneo/api",
-    "db:seed": "npm run db:seed -w @borneo/api"
+    "db:seed": "npm run db:seed -w @borneo/api",
+    "db:secure": "npm run db:secure -w @borneo/api",
+    "db:bootstrap": "npm run db:bootstrap -w @borneo/api",
+    "db:backup": "npm run db:backup -w @borneo/api",
+    "db:images": "npm run db:images -w @borneo/api",
+    "assets:organize": "node scripts/organize-assets.mjs",
+    "test:security": "npm run test:security -w @borneo/api"
   },
   "devDependencies": {
-    "concurrently": "latest"
+    "concurrently": "10.0.5"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

@@ -1,7 +1,20 @@
 # Dependencies
 node_modules/
+
+# Database and asset backups (at any directory depth)
+backup/
 backups/
 *.dump
+*.backup
+*.bak
+backup-*.sql
+before-reset-*.sql
+before-user-cleanup-*.sql
+backup-*.zip
+before-reset-*.zip
+before-user-cleanup-*.zip
+*-before-webp.zip
+*.sql.gz
 
 # Build output and generated TypeScript metadata
 dist/
@@ -33,6 +46,8 @@ logs/
 *.sqlite3
 *.db
 uploads/
+# Private operational images: retain structure, never upload customer media to Git.
+/storage/private/produk/**/*.webp
 tmp/
 temp/
 .cache/

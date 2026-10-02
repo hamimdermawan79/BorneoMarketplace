@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { pool,withTransaction } from '../database/client.js';
 import { allow,authenticate } from '../types.js';
+import { boundedTotal, priceInput, quantityInput, referenceNumber } from '../domain/order-input.js';
+import { lineTotal } from '../domain/order-rules.js';
 
 export async function specialRequestRoutes(app:FastifyInstance){
   app.get('/special-requests',{preHandler:authenticate},async request=>{
@@ -13,11 +15,16 @@ export async function specialRequestRoutes(app:FastifyInstance){
   });
 
   app.post('/special-requests',{preHandler:allow('BUYER')},async(request,reply)=>{
-    const input=z.object({name:z.string().trim().min(2).max(140),quantity:z.coerce.number().positive(),unit:z.string().trim().min(1).max(40),note:z.string().trim().max(500).optional()}).parse(request.body);
-    const assigned=await pool.query('SELECT admin_user_id FROM admin_kitchens WHERE kitchen_id=$1',[request.user.organizationId]);
-    if(!assigned.rowCount)return reply.code(409).send({message:'Dapur belum memiliki admin pengelola.'});
-    const requestNo=`REQ-${new Date().toISOString().slice(0,10).replaceAll('-','')}-${Math.floor(1000+Math.random()*9000)}`;
-    const {rows}=await pool.query(`INSERT INTO special_requests(request_no,kitchen_id,admin_user_id,name,quantity,unit,note,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,request_no AS "requestNo"`,[requestNo,request.user.organizationId,assigned.rows[0].admin_user_id,input.name,input.quantity,input.unit,input.note||null,request.user.id]);return rows[0];
+    const input=z.object({name:z.string().trim().min(2).max(140),quantity:quantityInput,unit:z.string().trim().min(1).max(40),note:z.string().trim().max(500).optional()}).parse(request.body);
+    return withTransaction(async client=>{
+      const assigned=await client.query(`SELECT ak.admin_user_id FROM admin_kitchens ak
+        JOIN users manager ON manager.id=ak.admin_user_id AND manager.active AND manager.role='ADMIN'
+        JOIN organizations kitchen ON kitchen.id=ak.kitchen_id AND kitchen.active AND kitchen.type='KITCHEN'
+        WHERE ak.kitchen_id=$1 FOR SHARE OF ak,manager,kitchen`,[request.user.organizationId]);
+      if(!assigned.rowCount)throw Object.assign(new Error('Dapur belum memiliki admin pengelola.'),{statusCode:409});
+      const requestNo=await referenceNumber('REQ',client);
+      const {rows}=await client.query(`INSERT INTO special_requests(request_no,kitchen_id,admin_user_id,name,quantity,unit,note,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,request_no AS "requestNo"`,[requestNo,request.user.organizationId,assigned.rows[0].admin_user_id,input.name,input.quantity,input.unit,input.note||null,request.user.id]);return rows[0];
+    });
   });
 
   app.patch('/special-requests/:id/reject',{preHandler:allow('ADMIN','SUPERADMIN')},async(request,reply)=>{
@@ -26,14 +33,17 @@ export async function specialRequestRoutes(app:FastifyInstance){
   });
 
   app.patch('/special-requests/:id/approve',{preHandler:allow('ADMIN','SUPERADMIN')},async(request,reply)=>{
-    const params=z.object({id:z.string().uuid()}).parse(request.params);const input=z.object({unit:z.string().trim().min(1).max(40),vendorName:z.string().trim().min(2).max(120).nullable().optional(),source:z.enum(['COOPERATIVE','VENDOR']),vendorId:z.string().uuid().nullable().optional(),salePrice:z.coerce.number().nonnegative(),costPrice:z.coerce.number().nonnegative().nullable().optional()}).parse(request.body);
+    const params=z.object({id:z.string().uuid()}).parse(request.params);const input=z.object({unit:z.string().trim().min(1).max(40),vendorName:z.string().trim().min(2).max(120).nullable().optional(),source:z.enum(['COOPERATIVE','VENDOR']),vendorId:z.string().uuid().nullable().optional(),salePrice:priceInput,costPrice:priceInput.nullable().optional()}).parse(request.body);
     if(input.source==='VENDOR'&&!input.vendorId&&!input.vendorName)return reply.code(400).send({message:'Nama vendor wajib diisi.'});
     try{return await withTransaction(async client=>{
       const values=request.user.role==='ADMIN'?[params.id,request.user.id]:[params.id];const scope=request.user.role==='ADMIN'?' AND r.admin_user_id=$2':'';
       const result=await client.query(`SELECT r.* FROM special_requests r WHERE r.id=$1 AND r.status='PENDING'${scope} FOR UPDATE`,values);const item=result.rows[0];if(!item)throw Object.assign(new Error('Permintaan tidak ditemukan atau sudah diproses.'),{statusCode:404});
+      const quantity=quantityInput.parse(item.quantity);
+      const total=boundedTotal(lineTotal(quantity,input.salePrice));
       let vendorId:string|null=null;
       if(input.source==='VENDOR'){
         if(input.vendorName){
+          await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`vendor:${item.admin_user_id}:${input.vendorName.toLowerCase()}`]);
           const existing=await client.query('SELECT id FROM vendors WHERE admin_user_id=$1 AND active AND lower(name)=lower($2) ORDER BY created_at LIMIT 1',[item.admin_user_id,input.vendorName]);
           vendorId=existing.rows[0]?.id??null;
           if(!vendorId)vendorId=(await client.query('INSERT INTO vendors(admin_user_id,name) VALUES($1,$2) RETURNING id',[item.admin_user_id,input.vendorName])).rows[0].id;
@@ -43,11 +53,11 @@ export async function specialRequestRoutes(app:FastifyInstance){
           vendorId=vendor.rows[0].id;
         }
       }
-      const sku=`REQ-${item.id.slice(0,8).toUpperCase()}`;
+      const sku=`REQ-${item.id.toUpperCase()}`;
       const template=(await client.query(`INSERT INTO product_templates(sku,name,category,order_unit,price_unit,active,owner_admin_user_id) VALUES($1,$2,'Permintaan Khusus',$3,$3,false,$4) RETURNING id`,[sku,item.name,input.unit,item.admin_user_id])).rows[0];
       const product=(await client.query(`INSERT INTO admin_products(admin_user_id,template_id,sale_price,active) VALUES($1,$2,$3,false) RETURNING id`,[item.admin_user_id,template.id,input.salePrice])).rows[0];
       const batch=(await client.query(`INSERT INTO inventory_batches(admin_product_id,source,vendor_id,quantity_initial,quantity_available,quantity_reserved,cost_price,created_by) VALUES($1,$2,$3,$4,0,$4,$5,$6) RETURNING id`,[product.id,input.source,vendorId,item.quantity,input.costPrice??null,request.user.id])).rows[0];
-      const orderNo=`ORD-${new Date().toISOString().slice(0,10).replaceAll('-','')}-${Math.floor(1000+Math.random()*9000)}`;const total=Number(item.quantity)*Number(input.salePrice);
+      const orderNo=await referenceNumber('ORD',client);
       const order=(await client.query(`INSERT INTO orders(order_no,kitchen_id,admin_user_id,needed_date,note,created_by,status,estimated_total) VALUES($1,$2,$3,current_date+1,$4,$5,'PREPARING',$6) RETURNING id`,[orderNo,item.kitchen_id,item.admin_user_id,`Permintaan ${item.request_no}`,item.created_by,total])).rows[0];
       const orderItem=(await client.query(`INSERT INTO order_items(order_id,admin_product_id,product_name,ordered_quantity,order_unit,price_unit,unit_price,estimated_total) VALUES($1,$2,$3,$4,$5,$5,$6,$7) RETURNING id`,[order.id,product.id,item.name,item.quantity,input.unit,input.salePrice,total])).rows[0];
       await client.query(`INSERT INTO order_item_allocations(order_item_id,inventory_batch_id,source,vendor_id,reserved_quantity) VALUES($1,$2,$3,$4,$5)`,[orderItem.id,batch.id,input.source,vendorId,item.quantity]);

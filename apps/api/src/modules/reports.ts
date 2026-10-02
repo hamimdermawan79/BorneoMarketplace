@@ -5,7 +5,7 @@ import { pool } from '../database/client.js';
 import { allow } from '../types.js';
 
 const filters=z.object({from:z.string().date().optional(),to:z.string().date().optional(),kitchenId:z.string().uuid().optional()}).refine(value=>!value.from||!value.to||value.from<=value.to,{message:'Periode awal harus sebelum periode akhir.'});
-const xml=(value:unknown)=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[char]!));
+const xml=(value:unknown)=>String(value??'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[char]!));
 async function reportRows(user:{id:string;role:string},query:unknown){
   const input=filters.parse(query);const params:unknown[]=[];const clauses=[`o.status IN('SHIPPED','AWAITING_KITCHEN','COMPLETED')`];
   if(user.role==='ADMIN'){params.push(user.id);clauses.push(`o.admin_user_id=$${params.length}`);}
@@ -17,7 +17,8 @@ async function reportRows(user:{id:string;role:string},query:unknown){
     string_agg(DISTINCT a.source::text,', ') AS sources,COALESCE(sum(COALESCE(a.actual_quantity,a.reserved_quantity)*b.cost_price)/NULLIF(sum(COALESCE(a.actual_quantity,a.reserved_quantity)),0),0) AS unit_cost
     FROM orders o JOIN organizations k ON k.id=o.kitchen_id JOIN users u ON u.id=o.admin_user_id JOIN order_items oi ON oi.order_id=o.id
     LEFT JOIN order_item_allocations a ON a.order_item_id=oi.id LEFT JOIN inventory_batches b ON b.id=a.inventory_batch_id
-    WHERE ${clauses.join(' AND ')} GROUP BY o.id,k.name,u.full_name,oi.id ORDER BY o.needed_date,o.order_no,oi.product_name`,params);
+    WHERE ${clauses.join(' AND ')} GROUP BY o.id,k.name,u.full_name,oi.id ORDER BY o.needed_date,o.order_no,oi.product_name LIMIT 10001`,params);
+  if(rows.length>10000)throw Object.assign(new Error('Laporan terlalu besar. Persempit periode atau pilih satu dapur.'),{statusCode:413});
   return rows;
 }
 
@@ -39,6 +40,6 @@ export async function reportRoutes(app:FastifyInstance){
   app.get('/reports/sales.pdf',{preHandler:allow('SUPERADMIN','ADMIN')},async(request,reply)=>{
     const rows=await reportRows(request.user,request.query);
     const pdf=await salesPdf(rows,filters.parse(request.query));
-    reply.header('Content-Type','application/pdf').header('Content-Disposition','attachment; filename="laporan-penjualan-borneo.pdf"');return reply.send(pdf);
+    reply.header('Content-Type','application/pdf').header('Content-Disposition','attachment; filename="laporan-keuangan-borneo.pdf"');return reply.send(pdf);
   });
 }
