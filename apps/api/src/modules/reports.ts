@@ -38,8 +38,9 @@ export async function reportRoutes(app:FastifyInstance){
   });
 
   app.get('/reports/sales.pdf',{preHandler:allow('SUPERADMIN','ADMIN')},async(request,reply)=>{
+    const {orientation}=z.object({orientation:z.enum(['portrait','landscape']).default('landscape')}).parse(request.query);
     const rows=await reportRows(request.user,request.query);
-    const pdf=await salesPdf(rows,filters.parse(request.query));
+    const pdf=await salesPdf(rows,{...filters.parse(request.query),orientation});
     reply.header('Content-Type','application/pdf').header('Content-Disposition','attachment; filename="laporan-keuangan-borneo.pdf"');return reply.send(pdf);
   });
 }
