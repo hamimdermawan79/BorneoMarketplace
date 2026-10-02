@@ -3,7 +3,7 @@
 # Execute only after provisioning the users, database, repository and secrets.
 # Never source a script or environment file from a release with root privileges.
 set -euo pipefail
-export PATH=/usr/local/bin:/usr/bin:/bin
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 022
 [[ "$EUID" -eq 0 && "$#" -eq 1 && "$1" =~ ^[a-f0-9]{40}$ ]] || {
   echo 'Usage: sudo /usr/local/sbin/borneo-deploy <40-character-main-commit-sha>' >&2
@@ -39,7 +39,8 @@ release="$base/releases/$sha-$stamp"
 mkdir -- "$release"
 git --git-dir="$repository" archive "$sha" | tar -x -C "$release"
 chown -R borneo-build:borneo-build "$release"
-runuser -u borneo-build -- /bin/bash -c 'cd "$1" && npm ci && npm test && npm run build' bash "$release"
+install -d -o borneo-build -g borneo-build -m 0700 /var/cache/borneo-marketplace/npm
+runuser -u borneo-build -- env npm_config_cache=/var/cache/borneo-marketplace/npm /bin/bash -c 'cd "$1" && npm ci && npm test && npm run build' bash "$release"
 # The API and SSH user cannot edit the published application code.
 chown -R root:root "$release"
 chmod -R go-w "$release"
