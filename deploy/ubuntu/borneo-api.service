@@ -1,0 +1,30 @@
+[Unit]
+Description=Borneo Marketplace API
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=borneo-api
+Group=borneo-api
+WorkingDirectory=/opt/borneo-marketplace/current/apps/api
+EnvironmentFile=/etc/borneo-marketplace/runtime.env
+ExecStart=/usr/local/bin/node dist/server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=40
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/borneo-marketplace/produk
+RestrictSUIDSGID=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

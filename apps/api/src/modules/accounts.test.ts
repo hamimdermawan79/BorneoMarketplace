@@ -1,4 +1,7 @@
-import {describe,expect,it} from 'vitest';
+import {describe,expect,it,vi} from 'vitest';
+// Schema-only tests must not load production database configuration.
+vi.mock('../database/client.js',()=>({pool:{query:vi.fn()},withTransaction:vi.fn()}));
+vi.mock('../types.js',()=>({allow:vi.fn(),credentialVersion:vi.fn()}));
 import {accountUpdateInput,selfUpdateInput} from './accounts.js';
 
 describe('account edit input boundary',()=>{

@@ -1,0 +1,67 @@
+# Cloudflare Tunnel origin: publish the hostname to http://127.0.0.1:8080.
+# This listener MUST remain loopback-only. TLS terminates at the Cloudflare edge;
+# cloudflared connects to Cloudflare over the encrypted tunnel.
+# Publish ONLY frontend dist. NEVER alias private storage or the repository root.
+server {
+    listen 127.0.0.1:8080;
+    server_name _;
+    root /opt/borneo-marketplace/current/apps/web/dist;
+    index index.html;
+    client_max_body_size 1m;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy no-referrer always;
+
+    # Trust the local connector, not arbitrary sources on the internet.
+    # Do not reuse this trust rule with a public listener.
+    set_real_ip_from 127.0.0.1;
+    real_ip_header CF-Connecting-IP;
+    location /api/ {
+        proxy_pass http://127.0.0.1:4000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_cache off;
+        proxy_read_timeout 35s;
+        proxy_hide_header Cache-Control;
+        add_header Cache-Control "private, no-store" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy no-referrer always;
+    }
+
+    location = /api/images/convert {
+        client_max_body_size 8m;
+        proxy_pass http://127.0.0.1:4000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_cache off;
+        proxy_read_timeout 35s;
+        proxy_hide_header Cache-Control;
+        add_header Cache-Control "private, no-store" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy no-referrer always;
+    }
+
+    location ^~ /assets/ {
+        try_files $uri =404;
+        # Includes unhashed branding assets, so do not make everything immutable.
+        add_header Cache-Control "public, max-age=3600";
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy no-referrer always;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy no-referrer always;
+    }
+}
