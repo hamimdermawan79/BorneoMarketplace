@@ -33,7 +33,7 @@ export function Landing({signedIn}:LandingProps){
         <section className="landing-hero" aria-labelledby="hero-title">
           <div className="landing-container hero-copy">
             <p className="landing-kicker">Borneo Marketplace</p>
-            <h1 id="hero-title">Kebutuhan rumah tangga dan dapur, <span>lebih mudah.</span></h1>
+            <h1 id="hero-title">Selamat Datang di <span>Borneo Marketplace</span></h1>
             <div className="hero-buttons">
               <a className="landing-button primary" href="#kemitraan">Daftar jadi mitra</a>
               <a className="landing-button secondary" href={signedIn?'/app':'/login'}>{signedIn?'Buka dashboard':'Masuk sistem'}</a>
