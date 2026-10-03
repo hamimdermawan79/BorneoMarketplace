@@ -2,8 +2,10 @@ import {useEffect,useState,type FormEvent} from 'react';
 import {api} from './api';
 import {defaultWebsite,type WebsiteSettings} from './website';
 import './website-management.css';
+import {LandingContentManagement} from './LandingContentManagement';
 
 export function WebsiteManagement(){
+  const [section,setSection]=useState<'content'|'contact'>('content');
   const [settings,setSettings]=useState<WebsiteSettings>(defaultWebsite);
   const [loading,setLoading]=useState(true);
   const [loaded,setLoaded]=useState(false);
@@ -29,7 +31,13 @@ export function WebsiteManagement(){
   const field=(key:keyof WebsiteSettings,value:string)=>setSettings(current=>({...current,[key]:value}));
   if(loading)return <p role="status">Memuat pengaturan website…</p>;
   if(!loaded)return <div className="website-management"><p className="notice" role="alert">{error}</p><button onClick={()=>void load()}>Coba lagi</button></div>;
-  return <div className="website-management">
+  return <div className="website-workspace">
+    <div className="website-workspace-nav" role="group" aria-label="Pengelolaan website">
+      <button aria-pressed={section==='content'} onClick={()=>setSection('content')}>Konten Landing Page</button>
+      <button aria-pressed={section==='contact'} onClick={()=>setSection('contact')}>Kontak & Alamat</button>
+      <a href="/" target="_blank" rel="noopener noreferrer">Lihat Website ↗</a>
+    </div>
+    <div hidden={section!=='contact'}><div className="website-management">
     {notice&&<p className="notice" role="status">{notice}</p>}
     {error&&<p className="notice" role="alert">{error}</p>}
     <form className="panel website-settings-form" onSubmit={save}>
@@ -44,5 +52,5 @@ export function WebsiteManagement(){
         <div className="website-settings-actions"><a href="/" target="_blank" rel="noopener noreferrer">Lihat website</a><button className="primary" type="submit">{saving?'Menyimpan…':'Simpan perubahan'}</button></div>
       </fieldset>
     </form>
-  </div>;
+  </div></div><div hidden={section!=='content'}><LandingContentManagement/></div></div>;
 }
