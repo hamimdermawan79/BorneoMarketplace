@@ -1,4 +1,11 @@
-.website-management{width:min(100%,760px);margin-inline:auto}
+.website-workspace{width:min(100%,1040px);margin-inline:auto}
+.website-workspace [hidden]{display:none}
+.website-workspace-nav{display:flex;align-items:center;gap:24px;border-bottom:1px solid var(--line);margin-bottom:28px}
+.website-workspace .website-workspace-nav button{border:0;border-radius:0;background:none;box-shadow:none;min-height:48px;padding:12px 0;border-bottom:2px solid transparent;color:#526b7c}
+.website-workspace .website-workspace-nav button[aria-pressed=true]{border-bottom-color:#4487b6;color:#18344b;font-weight:600}
+.website-workspace-nav a{margin-left:auto;min-height:44px;display:flex;align-items:center;font-size:13px;color:#236287}
+.website-management{width:100%;margin-inline:auto}
+@media(max-width:560px){.website-workspace-nav{gap:16px;flex-wrap:wrap;margin-bottom:24px}.website-workspace-nav button{font-size:12px}.website-workspace-nav a{margin-left:0;font-size:12px}.website-workspace-nav{row-gap:0}}
 .website-settings-form{padding:28px}
 .website-settings-form fieldset{border:0;padding:0;margin:0;min-width:0}
 .website-settings-form legend{font-size:17px;font-weight:600;margin-bottom:24px}

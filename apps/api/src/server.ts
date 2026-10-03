@@ -18,6 +18,7 @@ import { resetRoutes } from './modules/reset.js';
 import { imageRoutes } from './modules/images.js';
 import { websiteRoutes } from './modules/website.js';
 import {accountRoutes} from './modules/accounts.js';
+import {landingContentRoutes} from './modules/landing-content.js';
 
 export async function buildApp() {
   if (config.NODE_ENV === 'production') await assertRuntimeDatabaseRole();
@@ -67,6 +68,7 @@ export async function buildApp() {
   await app.register(specialRequestRoutes, { prefix: '/api' });
   await app.register(resetRoutes, { prefix: '/api' });
   await app.register(websiteRoutes, { prefix: '/api' });
+  await app.register(landingContentRoutes, {prefix:'/api'});
   await app.register(accountRoutes, {prefix:'/api'});
   return app;
 }

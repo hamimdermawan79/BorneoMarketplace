@@ -113,6 +113,12 @@ Panduan pemisahan kredensial, backup, reset demo, persiapan VPS, hasil verifikas
 
 Keputusan produk dan aturan bisnis lebih lengkap ada di [docs/PRD-v0.2.md](docs/PRD-v0.2.md).
 
+## Konten Landing Page
+
+Superadmin mengelola bagian Harga Bahan Pokok dan Berita melalui **Kelola Website → Konten Landing Page**. Harga bahan pokok berupa judul dan tautan HTTPS ke dokumen resmi kementerian (misalnya Google Drive), bukan harga koperasi yang diinput manual. Pastikan izin dokumen mengizinkan pengunjung melihatnya; thumbnail dokumen opsional.
+
+Berita menggunakan headline, thumbnail, dan tautan tujuan. Konten yang ditampilkan muncul sebelum Tentang Kami; berita berupa carousel dengan tautan Lihat Selengkapnya. Konten dapat diedit, disembunyikan, atau dihapus. Migrasi `013_landing_content.sql` membuat penyimpanan konten; thumbnail unggahan disimpan bersama database dan ikut backup database.
+
 ## Deployment Production
 
 Template Ubuntu 24, GitHub Actions (test/build lalu auto-deploy setelah merge `main`),
