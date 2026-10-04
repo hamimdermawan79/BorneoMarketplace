@@ -18,7 +18,8 @@
 .production-login .login-password-field{position:relative}
 .production-login .login-password-field input{padding-right:52px}
 .production-login .login-password-toggle{position:absolute;right:3px;top:3px;width:44px;height:44px;min-height:44px;padding:0;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:#435d70;box-shadow:none;border-radius:8px}
-.production-login .login-password-toggle:hover{background:#edf6fc}
+.production-login .login-password-toggle:is(:hover,:active,:focus){border:0;background:transparent;box-shadow:none;color:#236287}
+.production-login .login-password-toggle:focus:not(:focus-visible){outline:none}
 .production-login .login-submit{width:100%;min-height:50px;margin-top:18px;border-radius:10px;font-size:15px;font-weight:600;background:#a9d8f3;border:1px solid #8bc5e7;color:#153a53;box-shadow:0 6px 16px -8px #4286af;transition:background .18s}
 .production-login .login-submit:hover:not(:disabled){background:#94ccec}
 .production-login .login-panel .form-error{margin:8px 0 0;padding:10px 12px;background:#fff4f3;border:1px solid #f2ceca;border-radius:8px;color:#9d2923;font-size:13px;overflow-wrap:anywhere}

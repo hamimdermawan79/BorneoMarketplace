@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {randomUUID,randomBytes} from 'node:crypto';
 import {readFileSync,readdirSync} from 'node:fs';
 import {join} from 'node:path';
-import {mkdtemp,rm} from 'node:fs/promises';
+import {mkdtemp,rm,stat} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import pg from 'pg';
 import bcrypt from 'bcryptjs';
@@ -20,6 +20,8 @@ let fixture:pg.Pool|undefined;
 let app:Awaited<ReturnType<typeof import('../server.js').buildApp>>|undefined;
 let runtime:pg.Pool|undefined;
 let created=false;
+const cleanupRole=`borneo_cleanup_test_${randomUUID().replaceAll('-','')}`;
+let cleanupRoleCreated=false;
 let checks=0;
 function check(name:string){checks++;console.log(`PASS ${name}`);}
 try{
@@ -51,7 +53,7 @@ try{
   await fixture.query('INSERT INTO admin_kitchens(admin_user_id,kitchen_id) VALUES($1,$2),($3,$4)',[a.id,kitchenA.id,b.id,kitchenB.id]);
   const login=async(email:string)=>{const r=await app!.inject({method:'POST',url:'/api/auth/login',payload:{email,password}});assert.equal(r.statusCode,200,r.body);return r.json().token as string;};
   const [ta,tb,tbuyerA,tbuyerB,tsa]=await Promise.all([a,b,buyerA,buyerB,sa].map(u=>login(u.email)));
-  const call=(method:'GET'|'POST'|'PATCH'|'PUT',url:string,token:string,payload?:object)=>app!.inject({method,url,headers:{authorization:`Bearer ${token}`},payload});
+  const call=(method:'GET'|'POST'|'PATCH'|'PUT'|'DELETE',url:string,token:string,payload?:object)=>app!.inject({method,url,headers:{authorization:`Bearer ${token}`},payload});
   const publicWebsite=await app.inject({method:'GET',url:'/api/website'});
   assert.equal(publicWebsite.statusCode,200,publicWebsite.body);
   assert.deepEqual(publicWebsite.json(),{whatsapp:'',email:'',instagram:'',address:'Sambas, Kalimantan Barat'});
@@ -284,16 +286,57 @@ try{
   for(const secret of [managedPassword,resetPassword,selfPassword,password])assert.ok(!JSON.stringify(accountAudits).includes(secret));
   assert.equal((await call('PATCH',`/api/accounts/${sa.id}`,tsa,{active:false})).statusCode,409);
   check('account management isolated by role and cluster, verified resets revoke sessions, buyer self-service is restricted and passwords never audited');
+  const superadminReset='SuperadminReset123!';
+  const resetBySuperadmin=await call('PATCH',`/api/accounts/${managedId}`,tsa,{password:superadminReset});
+  assert.equal(resetBySuperadmin.statusCode,200,resetBySuperadmin.body);
+  assert.equal((await app.inject({method:'POST',url:'/api/auth/login',payload:{identifier:'managed.updated',password:selfPassword}})).statusCode,401);
+  assert.equal((await call('DELETE',`/api/accounts/${managedId}`,tsa)).statusCode,409);
+  assert.equal((await call('DELETE',`/api/accounts/${managedId}`,ta)).statusCode,403);
+  assert.equal((await call('PATCH',`/api/accounts/${managedId}`,tsa,{active:false})).statusCode,200);
+  const removeManaged=await call('DELETE',`/api/accounts/${managedId}`,tsa);
+  assert.equal(removeManaged.statusCode,200,removeManaged.body);
+  assert.ok((await one('SELECT deleted_at FROM users WHERE id=$1',[managedId])).deleted_at);
+  assert.ok(!(await call('GET','/api/users',tsa)).json().some((row:any)=>row.id===managedId));
+  assert.equal((await call('PATCH',`/api/accounts/${managedId}`,tsa,{active:true})).statusCode,404);
+  await assert.rejects(fixture.query('UPDATE users SET active=true WHERE id=$1',[managedId]),(e:any)=>e.code==='23514');
+  // This buyer already has completed orders: deletion must preserve those foreign keys.
+  await call('PATCH',`/api/accounts/${buyerA.id}`,tsa,{active:false});
+  assert.equal((await call('DELETE',`/api/accounts/${buyerA.id}`,tsa)).statusCode,200);
+  assert.ok((await one('SELECT count(*)::int AS n FROM orders WHERE created_by=$1',[buyerA.id])).n>0);
+  check('superadmin resets without old password; inactive deletion hides accounts without breaking history or allowing reactivation');
   await fixture.query('UPDATE users SET active=false WHERE id=$1',[a.id]);
   assert.equal((await call('GET',customImage,ta)).statusCode,401);
-  assert.equal((await call('GET',customImage,tbuyerA)).statusCode,404);
+  assert.equal((await call('GET',customImage,tbuyerA)).statusCode,401);
   assert.equal((await call('GET','/api/catalog',ta)).statusCode,401);check('disabled accounts lose API access immediately');
   for(let i=0;i<21;i++)await app.inject({method:'POST',url:'/api/auth/login',payload:{email:'none@test.local',password:'WrongPassword123'},remoteAddress:'192.0.2.33'});
   assert.equal((await app.inject({method:'POST',url:'/api/auth/login',payload:{email:'none@test.local',password:'WrongPassword123'},remoteAddress:'192.0.2.33'})).statusCode,429);check('login brute-force throttling');
+  // Exercise destructive cleanup ONLY in this uniquely created scratch database.
+  // Use a separate non-owner role with the same grants as cleanup-setup.ts.
+  const cleanupPassword=randomBytes(36).toString('base64url');
+  await owner.query(`CREATE ROLE "${cleanupRole}" LOGIN PASSWORD '${cleanupPassword}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`);
+  cleanupRoleCreated=true;
+  await fixture.query(`GRANT CONNECT ON DATABASE "${database}" TO "${cleanupRole}"`);
+  await fixture.query(`GRANT USAGE ON SCHEMA public TO "${cleanupRole}"`);
+  await fixture.query(`GRANT SELECT ON ALL TABLES IN SCHEMA public TO "${cleanupRole}"`);
+  await fixture.query(`GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO "${cleanupRole}"`);
+  await fixture.query(`GRANT DELETE ON special_requests,inventory_movements,order_status_history,order_item_allocations,order_items,orders,inventory_batches,admin_products,vendors,admin_kitchens,audit_logs,product_templates,users,organizations TO "${cleanupRole}"`);
+  await fixture.query(`GRANT INSERT ON audit_logs TO "${cleanupRole}"`);
+  const cleanupUrl=new URL(ownerUrl);cleanupUrl.username=cleanupRole;cleanupUrl.password=cleanupPassword;
+  process.env.ALLOW_DATA_RESET='true';process.env.DATA_RESET_DATABASE_URL=cleanupUrl.toString();
+  process.env.DATA_RESET_BACKUP_DIR=join(imageTestDirectory,'cleanup-backups');process.env.NODE_ENV='production';
+  const cleanup=await call('POST','/api/management/reset',tsa,{confirmation:'Ya, Saya Yakin Untuk Hapus Semua Data.',password});
+  assert.equal(cleanup.statusCode,200,cleanup.body);
+  assert.equal((await one('SELECT count(*)::int AS n FROM orders')).n,0);
+  assert.equal((await one("SELECT count(*)::int AS n FROM users WHERE role<>'SUPERADMIN'")).n,0);
+  assert.ok((await one("SELECT count(*)::int AS n FROM users WHERE role='SUPERADMIN' AND active")).n>0);
+  assert.equal((await one("SELECT count(*)::int AS n FROM audit_logs WHERE action='RESET'")).n,1);
+  assert.ok((await stat(join(process.env.DATA_RESET_BACKUP_DIR,cleanup.json().backupId))).size>0);
+  check('production cleanup with a restricted non-owner connection creates a real pg_dump/media backup and preserves superadmins');
   console.log(`${checks} real-PostgreSQL security checks passed.`);
 }finally{
   await app?.close();await runtime?.end();await fixture?.end();
   if(created)await owner.query(`DROP DATABASE "${database}" WITH (FORCE)`);
+  if(cleanupRoleCreated&&/^borneo_cleanup_test_[a-f0-9]{32}$/.test(cleanupRole))await owner.query(`DROP ROLE "${cleanupRole}"`);
   await owner.end();
   // Exactly the uniquely created test directory, never live product storage.
   if(join(tmpdir(),imageTestDirectory.split(/[\\/]/).at(-1)!)===imageTestDirectory&&imageTestDirectory.split(/[\\/]/).at(-1)!.startsWith('borneo-private-images-test-'))await rm(imageTestDirectory,{recursive:true});

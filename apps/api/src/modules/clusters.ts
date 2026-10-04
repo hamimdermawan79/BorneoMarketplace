@@ -11,7 +11,7 @@ export async function clusterRoutes(app: FastifyInstance) {
     const { rows } = await pool.query(`SELECT u.id AS "adminId",u.full_name AS admin,u.email,u.active,
       COALESCE(json_agg(json_build_object('id',o.id,'name',o.name,'address',o.address,'phone',o.phone)) FILTER(WHERE o.id IS NOT NULL),'[]') AS kitchens
       FROM users u LEFT JOIN admin_kitchens ak ON ak.admin_user_id=u.id LEFT JOIN organizations o ON o.id=ak.kitchen_id
-      WHERE u.role='ADMIN' GROUP BY u.id ORDER BY u.full_name`);
+      WHERE u.role='ADMIN' AND u.deleted_at IS NULL GROUP BY u.id ORDER BY u.full_name`);
     return rows;
   });
 

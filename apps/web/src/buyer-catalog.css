@@ -7,7 +7,58 @@
   box-shadow: none
 }
 .app-shell.role-buyer .catalog-toolbar { gap: 12px; margin-bottom: 12px }
-.app-shell.role-buyer .category-filter { margin-bottom: 16px }
+.app-shell.role-buyer .catalog-search {
+  min-width: 0;
+  background: transparent;
+  border-color: var(--ui-line);
+  border-radius: 10px
+}
+.app-shell.role-buyer .catalog-search>svg { flex-shrink: 0 }
+/* Override the shared form theme: the search has one border and no inner surface. */
+.app-shell.role-buyer .workspace>main .catalog-search input[type=search] {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none
+}
+.app-shell.role-buyer .catalog-search:focus-within {
+  border-color: #3c7c9f;
+  outline: 2px solid #3c7c9f;
+  outline-offset: 3px
+}
+.app-shell.role-buyer .category-filter { gap: 16px; margin-bottom: 16px; padding: 4px 3px 6px }
+.app-shell.role-buyer .workspace>main .category-filter button {
+  position: relative;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ui-muted);
+  box-shadow: none;
+  transform: none
+}
+.app-shell.role-buyer .category-filter button::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  left: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: transparent
+}
+.app-shell.role-buyer .workspace>main .category-filter button:is(.active,:hover) { color: var(--ui-ink) }
+.app-shell.role-buyer .category-filter button.active::after { background: var(--blue-dark) }
 .app-shell.role-buyer .catalog-panel .product-grid { grid-template-columns: repeat(auto-fill,minmax(172px,1fr)); gap: 12px; align-items: stretch }
 .app-shell.role-buyer .catalog-product { min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible }
 .app-shell.role-buyer .catalog-product>.product-image { display: block; aspect-ratio: 1; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: #eaf3f8 }
