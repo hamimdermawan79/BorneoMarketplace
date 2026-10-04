@@ -33,7 +33,7 @@ export function BuyerPanel({ page, user, go, onLogout }: { page: string; user: U
     {notice&&<div className="notice" role="status">{notice}</div>}
     <section className="panel catalog-panel">
       <div className="catalog-toolbar"><label className="catalog-search"><Search size={18}/><input aria-label="Cari produk atau kategori" type="search" placeholder="Cari produk atau kategori" value={search} onChange={event=>setSearch(event.target.value)}/></label><span><b>{visible.length}</b> produk tersedia</span></div>
-      <div className="category-filter" aria-label="Filter kategori">{categories.map(item=><button key={item} className={category===item?'active':''} onClick={()=>setCategory(item)}>{item}</button>)}</div>
+      <div className="category-filter" role="group" aria-label="Filter kategori">{categories.map(item=><button key={item} type="button" aria-pressed={category===item} className={category===item?'active':''} onClick={()=>setCategory(item)}>{item}</button>)}</div>
       {visible.length?<div className="product-grid">{visible.map(product=><BuyerCatalogProduct key={product.id} product={product} onSelect={()=>openProduct(product)}/>)}</div>:<EmptyState title={search||category!=='Semua'?'Produk tidak ditemukan':'Belum ada produk tersedia'} detail={search||category!=='Semua'?'Coba ubah pencarian atau kategori.':'Katalog akan terisi setelah admin koperasi menambahkan stok.'}/>}
     </section>
     <div className="catalog-floating-actions" role="group" aria-label="Aksi katalog">

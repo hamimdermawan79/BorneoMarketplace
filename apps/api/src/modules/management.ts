@@ -28,7 +28,7 @@ export async function managementRoutes(app:FastifyInstance){
       (SELECT count(*)::int FROM admin_products ap WHERE ap.admin_user_id=u.id AND ap.active) AS products,
       (SELECT count(*)::int FROM orders o WHERE o.admin_user_id=u.id AND o.status NOT IN('COMPLETED','CANCELLED')) AS "activeOrders",
       (SELECT COALESCE(sum(COALESCE(o.final_total,o.estimated_total)),0) FROM orders o WHERE o.admin_user_id=u.id AND o.status='COMPLETED' AND o.updated_at>=date_trunc('month',now())) AS "salesThisMonth"
-      FROM users u WHERE u.role='ADMIN' ORDER BY u.full_name`)).rows;
+      FROM users u WHERE u.role='ADMIN' AND u.deleted_at IS NULL ORDER BY u.full_name`)).rows;
     return {summary,statuses,admins};
   });
 
@@ -38,6 +38,7 @@ export async function managementRoutes(app:FastifyInstance){
       FROM users u LEFT JOIN organizations o ON o.id=u.organization_id
       LEFT JOIN admin_kitchens ak ON ak.kitchen_id=o.id AND u.role='BUYER'
       LEFT JOIN users manager ON manager.id=ak.admin_user_id
+      WHERE u.deleted_at IS NULL
       ORDER BY CASE u.role WHEN 'SUPERADMIN' THEN 0 WHEN 'ADMIN' THEN 1 ELSE 2 END,u.full_name`);
     return rows;
   });
@@ -45,7 +46,7 @@ export async function managementRoutes(app:FastifyInstance){
   app.get('/organizations',{preHandler:allow('SUPERADMIN')},async()=>{
     const {rows}=await pool.query(`SELECT o.id,o.type,o.name,o.phone,o.address,o.gmaps_url AS "gmapsUrl",o.active,
       count(DISTINCT u.id)::int AS "userCount",manager.id AS "managerId",manager.full_name AS manager
-      FROM organizations o LEFT JOIN users u ON u.organization_id=o.id
+      FROM organizations o LEFT JOIN users u ON u.organization_id=o.id AND u.deleted_at IS NULL
       LEFT JOIN admin_kitchens ak ON ak.kitchen_id=o.id LEFT JOIN users manager ON manager.id=ak.admin_user_id
       GROUP BY o.id,manager.id,manager.full_name
       ORDER BY CASE o.type WHEN 'COOPERATIVE' THEN 0 ELSE 1 END,o.name`);
@@ -89,7 +90,7 @@ export async function managementRoutes(app:FastifyInstance){
       await client.query('SELECT pg_advisory_xact_lock(7182431)');
       const actor=await client.query("SELECT 1 FROM users WHERE id=$1 AND role='SUPERADMIN' AND active",[request.user.id]);
       if(!actor.rowCount)throw Object.assign(new Error('Sesi tidak berlaku. Silakan masuk kembali.'),{statusCode:401});
-      const current=await client.query('SELECT role,active FROM users WHERE id=$1 FOR UPDATE',[params.id]);
+      const current=await client.query('SELECT role,active FROM users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE',[params.id]);
       if(!current.rowCount)throw Object.assign(new Error('Pengguna tidak ditemukan.'),{statusCode:404});
       if(current.rows[0].role==='BUYER'&&input.role)throw Object.assign(new Error('Role buyer terikat dengan identitas dapur dan tidak dapat diubah langsung.'),{statusCode:409});
       if(current.rows[0].role==='SUPERADMIN'&&current.rows[0].active&&(input.active===false||(input.role&&input.role!=='SUPERADMIN'))){

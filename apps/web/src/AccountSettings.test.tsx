@@ -11,8 +11,9 @@ describe('account settings forms',()=>{
     expect(html).toContain('role="dialog"');expect(html).toContain('aria-modal="true"');
   });
   it('shows assignment only for the superadmin form',()=>{
-    const html=renderToStaticMarkup(<AccountEditor account={account} admins={[{id:'admin-a',name:'Admin A',active:true}]} onClose={()=>{}} onSaved={async()=>{}}/>);
+    const html=renderToStaticMarkup(<AccountEditor account={account} superadmin admins={[{id:'admin-a',name:'Admin A',active:true}]} onClose={()=>{}} onSaved={async()=>{}}/>);
     expect(html).toContain('name="adminId"');expect(html).toContain('value="admin-a" selected=""');
+    expect(html).toContain('Superadmin tidak perlu memasukkan password lama.');
   });
   it('does not edit cooperative-wide organization data when editing admin accounts',()=>{
     const html=renderToStaticMarkup(<AccountEditor account={{...account,role:'ADMIN'}} onClose={()=>{}} onSaved={async()=>{}}/>);

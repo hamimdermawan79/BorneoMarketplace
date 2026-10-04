@@ -11,8 +11,8 @@ describe('account edit input boundary',()=>{
   it.each([{role:'SUPERADMIN'},{organizationId:'fake'},{credentialVersion:'fake'},{password_hash:'fake'},{}])('rejects unknown privileges and empty updates: %j',payload=>{
     expect(accountUpdateInput.safeParse(payload).success).toBe(false);
   });
-  it('requires actor verification for password resets',()=>{
-    expect(accountUpdateInput.safeParse({password:'SecureNew123!'}).success).toBe(false);
+  it('permits password-only reset input; authorization is enforced by the route',()=>{
+    expect(accountUpdateInput.safeParse({password:'SecureNew123!'}).success).toBe(true);
     expect(accountUpdateInput.safeParse({password:'SecureNew123!',currentPassword:'SecureOld123!'}).success).toBe(true);
   });
   it.each([{phone:'08123456789',fullName:'Other'},{username:'another'},{active:false},{role:'ADMIN'},{kitchen:{name:'Other'}},{id:'other'},{}])('limits self-service to phone/password: %j',payload=>{

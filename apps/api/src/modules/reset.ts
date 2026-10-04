@@ -2,8 +2,9 @@ import type {FastifyInstance} from 'fastify';
 import bcrypt from 'bcryptjs';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {chmod,mkdir,stat} from 'node:fs/promises';
-import {resolve} from 'node:path';
+import {chmod,mkdir,realpath,stat} from 'node:fs/promises';
+import {isAbsolute,relative,resolve,sep} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import pg from 'pg';
@@ -14,6 +15,8 @@ import {allow} from '../types.js';
 import {passwordInput} from '../security/input-validation.js';
 export const confirmation='Ya, Saya Yakin Untuk Hapus Semua Data.';
 const tables=['special_requests','inventory_movements','order_status_history','order_item_allocations','order_items','orders','inventory_batches','admin_products','vendors','admin_kitchens','audit_logs'];
+const webRoot=fileURLToPath(new URL('../../../web/',import.meta.url));
+const inside=(parent:string,child:string)=>{const path=relative(parent,child);return !path||(!isAbsolute(path)&&path!=='..'&&!path.startsWith('..'+sep));};
 export async function resetRoutes(app:FastifyInstance){
   let resetInProgress=false;
   const maintenanceUrl=()=>{
@@ -51,9 +54,15 @@ export async function resetRoutes(app:FastifyInstance){
       const user=(await client.query("SELECT password_hash FROM users WHERE id=$1 AND role='SUPERADMIN' AND active",[request.user.id])).rows[0];
       if(!user||user.password_hash!==verifiedUser.password_hash)throw Object.assign(new Error('Sesi tidak berlaku. Silakan masuk kembali.'),{statusCode:401});
       const backupId=`before-reset-${Date.now()}-${randomUUID()}.dump`;
-      const directory=resolve(process.cwd(),'backups');await mkdir(directory,{recursive:true,mode:0o700});
+      const override=process.env.DATA_RESET_BACKUP_DIR;
+      if(override&&!isAbsolute(override))throw Object.assign(new Error('Lokasi backup cleanup harus berupa path absolut.'),{statusCode:503});
+      if(process.env.NODE_ENV==='production'&&!override)throw Object.assign(new Error('Lokasi backup cleanup production belum dikonfigurasi.'),{statusCode:503});
+      const directory=resolve(override||resolve(process.cwd(),'backups'));
       const path=resolve(directory,backupId);
       try{
+        if(inside(webRoot,directory))throw Error('Public backup directory');
+        await mkdir(directory,{recursive:true,mode:0o700});
+        if(inside(await realpath(webRoot),await realpath(directory)))throw Error('Backup directory resolves to web assets');
         await promisify(execFile)(process.env.PG_DUMP_PATH||'pg_dump',['--format=custom','--file',path],{timeout:120000,windowsHide:true,env:{...process.env,PGHOST:db.hostname,PGPORT:db.port||'5432',PGDATABASE:decodeURIComponent(db.pathname.slice(1)),PGUSER:decodeURIComponent(db.username),PGPASSWORD:decodeURIComponent(db.password)}});
         if((await stat(path)).size===0)throw Error('Empty backup');
         await chmod(path,0o600);
