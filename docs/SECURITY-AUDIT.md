@@ -50,6 +50,15 @@ Backup: jalankan `npm run db:backup`. Jika `pg_dump` tidak ada di PATH, set `PG_
 
 Reset tersedia untuk superadmin di development maupun production jika `ALLOW_DATA_RESET=true`, `DATA_RESET_DATABASE_URL` menunjuk database lokal yang sama, dan `PG_DUMP_PATH` valid. Restart API setelah mengubah konfigurasi. Tetap wajib password superadmin, teks persis `Ya, Saya Yakin Untuk Hapus Semua Data.`, dan backup sukses sebelum penghapusan. Koneksi reset memiliki hak lebih tinggi; simpan hanya sebagai secret server. Jangan gunakan koneksi tersebut sebagai DATABASE_URL runtime.
 
+Production juga membutuhkan `DATA_RESET_BACKUP_DIR` absolut dan private di luar release.
+Setup Ubuntu memakai role non-owner `borneo_cleanup`, file cleanup.env terpisah,
+dan StateDirectory 0700. Langkah aktivasi satu kali ada di DEPLOYMENT.md; merge kode
+saja tidak mengubah konfigurasi host existing. Tidak ada reset yang dijalankan saat deploy.
+Superadmin boleh mereset password akun tanpa password lama; actor tetap divalidasi
+dengan role aktif dan versi kredensial setelah lock. Admin dan buyer tetap memerlukan
+password lama. Akun nonaktif dapat dihapus dari daftar oleh superadmin melalui
+soft-delete permanen; constraint database menolak reaktivasi, histori/FK dipertahankan.
+
 ### Checklist sebelum VPS / data asli
 
 1. Gunakan database production bersih, bukan database demo. Buat kredensial baru; jangan gunakan password yang pernah dibagikan di percakapan atau seed.
