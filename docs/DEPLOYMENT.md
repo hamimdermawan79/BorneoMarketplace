@@ -197,6 +197,79 @@ yang memang relevan**, bukan `git add .` tanpa memeriksa data sensitif.
 
 ## Update Migrasi Dan Recovery
 
+### Aktifkan Cleanup Production Sekali
+
+Cleanup tersedia di dashboard superadmin juga di production. `runtime.env` tetap
+memakai role API biasa; file terpisah `cleanup.env` mengaktifkan reset dengan login
+`borneo_cleanup`, bukan pemilik schema. Role ini bisa membaca tabel untuk backup,
+menghapus tabel operasional, dan menulis audit reset, tetapi tidak memiliki hak DDL,
+CREATEROLE, ownership, atau bypass RLS. Ini tetap kredensial destruktif: lindungi
+seperti secret production. Jangan mengunggah atau menampilkan isinya.
+
+Sesudah merge dan redeploy kode ini, jalankan **sekali** sebagai operator VPS.
+Jika `cleanup.env` atau role sudah ada, jangan menimpa: periksa setup existing dahulu.
+Helper di bawah hanya membuat konfigurasi, **tidak menghapus data**.
+
+```bash
+(
+  set -e
+  if sudo test -e /etc/borneo-marketplace/cleanup.env; then
+    echo 'cleanup.env sudah ada; tidak ditimpa.'
+    exit 1
+  fi
+
+  sudo -u postgres psql -X -v ON_ERROR_STOP=1 \
+    -c 'ALTER ROLE borneo_owner CREATEROLE;'
+  trap 'sudo -u postgres psql -X -v ON_ERROR_STOP=1 -c "ALTER ROLE borneo_owner NOCREATEROLE;"' EXIT
+
+  sudo systemd-run --wait --pipe --collect \
+    --property=User=root \
+    --property=EnvironmentFile=/etc/borneo-marketplace/maintenance.env \
+    --property=UMask=0077 --property=NoNewPrivileges=yes \
+    --working-directory=/opt/borneo-marketplace/current \
+    /usr/local/bin/node --import tsx apps/api/src/database/cleanup-setup.ts
+
+  sudo install -o root -g root -m 600 \
+    /opt/borneo-marketplace/current/apps/api/.env.cleanup \
+    /etc/borneo-marketplace/cleanup.env
+
+  sudo install -o root -g root -m 644 \
+    /opt/borneo-marketplace/current/deploy/ubuntu/borneo-api.service \
+    /etc/systemd/system/borneo-api.service
+
+  sudo systemctl daemon-reload
+  sudo systemctl restart borneo-api
+)
+
+sudo systemctl is-active borneo-api
+curl --fail --silent --show-error http://127.0.0.1:8080/api/health
+```
+
+Service membaca `cleanup.env` setelah `runtime.env`, sehingga `ALLOW_DATA_RESET=true`
+di file cleanup mengalahkan flag false yang lama. `StateDirectory` membuat direktori
+backup `/var/lib/borneo-marketplace/cleanup-backups` sebagai private 0700, writable
+meskipun `ProtectSystem=strict`, dan tetap ada setelah restart/redeploy.
+Reset tetap meminta password superadmin dan teks konfirmasi persis; penghapusan
+tidak dijalankan jika backup database atau foto gagal. Pertahankan `pg_dump` 16
+untuk PostgreSQL 16. Periksa disk dan simpan backup offsite; retensi tidak otomatis.
+
+Untuk menonaktifkan lagi, ubah **di cleanup.env** `ALLOW_DATA_RESET=false`, lalu
+restart API (mengubah runtime.env saja tidak cukup karena file cleanup dibaca terakhir).
+Sesudah table/sequence baru ditambahkan, review dan berikan SELECT untuk role cleanup
+agar pg_dump tetap berfungsi. Jangan memberi default grant write ke seluruh schema.
+Reset berdurasi panjang dapat melewati timeout proxy; jangan langsung mengulang
+permintaan sebelum mengecek hasil dan audit. Untuk data besar, gunakan jendela
+maintenance dengan backup/restore yang telah diuji.
+
+### Penghapusan Akun Dan Password
+
+Superadmin dapat reset password tanpa password lama; admin pengelola dan buyer
+tetap harus memverifikasi password saat ini. Semua sesi lama target dicabut.
+Hapus akun hanya tersedia untuk superadmin dan akun nonaktif, bukan akun sendiri.
+Penghapusan menggunakan `users.deleted_at`: akun hilang dari daftar, tidak bisa
+login/diaktifkan kembali, tetapi referensi histori pesanan dan audit tidak rusak.
+Username/email tetap dicadangkan untuk menjaga identitas historis.
+
 - Build gagal: release aktif tidak disentuh. Build sukses: API dihentikan sebentar,
   DB + foto dibackup, migrasi dijalankan, symlink diganti, API dinyalakan, health dicek.
   Alur ini **memiliki downtime**, bukan zero-downtime/blue-green.
