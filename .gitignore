@@ -54,6 +54,14 @@ temp/
 # Generated reviews/reports are not application source.
 /output/
 
+# Android build products and signing secrets (the public release APK is intentional).
+.gradle/
+apps/android/**/build/
+apps/android/local.properties
+*.jks
+*.keystore
+signing.properties
+
 # Editor and operating-system files
 .DS_Store
 Thumbs.db

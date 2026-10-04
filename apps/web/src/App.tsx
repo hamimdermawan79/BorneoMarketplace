@@ -4,6 +4,7 @@ import { useEffect,useMemo,useRef,useState,type CSSProperties,type FormEvent } f
 import { Boxes,Building2,ClipboardCheck,Eye,EyeOff,FileDown,History,LayoutDashboard,LogOut,Menu,PackagePlus,Plus,ShoppingBasket,Users,X } from 'lucide-react';
 import { api,download,session,type User } from './api';
 import { Landing } from './Landing';
+import { IosGuide } from './IosGuide';
 import { SuperadminPanel } from './SuperadminPanel';
 import { BuyerPanel } from './BuyerPanel';
 import './login.css';
@@ -169,6 +170,7 @@ export function App(){
   useEffect(()=>{const onPop=()=>setPath(window.location.pathname);window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);
   useEffect(()=>{if(!session.token){setChecking(false);return}api<User>('/auth/me').then(setUser).catch(()=>session.clear()).finally(()=>setChecking(false))},[]);
   if(path==='/')return <Landing signedIn={Boolean(user)}/>;
+  if(path==='/panduan-ios')return <IosGuide/>;
   if(checking)return <div className="loading">Memuat…</div>;
   if(path==='/login'&&!user)return <Login onLogin={account=>{setUser(account);navigate('/app',true)}}/>;
   if(!user)return <Login onLogin={account=>{setUser(account);navigate('/app',true)}}/>;

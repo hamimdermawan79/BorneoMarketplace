@@ -29,7 +29,7 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(401).send({ message: 'Username/email atau password tidak sesuai.' });
     }
     const payload = { id: user.id, role: user.role, organizationId: user.organization_id, email: user.email, username:user.username };
-    return { token: app.jwt.sign({ ...payload, credentialVersion: credentialVersion(user.password_hash) }, { expiresIn: '8h' }), user: { ...payload, name: user.full_name,organization:user.organization,phone:user.phone,address:user.address,gmapsUrl:user.gmapsUrl } };
+    return { token: app.jwt.sign({ ...payload, credentialVersion: credentialVersion(user.password_hash) }, { expiresIn: user.role==='SUPERADMIN'?'1d':'30d' }), user: { ...payload, name: user.full_name,organization:user.organization,phone:user.phone,address:user.address,gmapsUrl:user.gmapsUrl } };
   });
 
   app.get('/me', { preHandler: authenticate }, async request => {
