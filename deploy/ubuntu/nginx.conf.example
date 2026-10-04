@@ -57,6 +57,16 @@ server {
         add_header Referrer-Policy no-referrer always;
     }
 
+    # APK downloads must never fall back to the SPA HTML document.
+    location ^~ /downloads/ {
+        try_files $uri =404;
+        types { application/vnd.android.package-archive apk; }
+        default_type application/octet-stream;
+        add_header Content-Disposition 'attachment; filename="borneo-marketplace.apk"';
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
         add_header Cache-Control "no-cache" always;

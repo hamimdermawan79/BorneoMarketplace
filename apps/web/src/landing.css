@@ -3,6 +3,117 @@
 @media(max-width:560px){.landing-container{width:min(calc(100% - 32px),1160px)}.landing-header{height:74px}.landing-brand img{width:36px;height:44px}.hero-copy{padding:112px 0 52px}.hero-copy h1{font-size:clamp(38px,11vw,52px)}.hero-copy>p:last-of-type{font-size:15px}.hero-buttons{display:grid;max-width:320px;margin-inline:auto;margin-top:26px}.identity-strip{border-radius:0 0 18px 18px}.landing-about{padding:72px 0}.about-layout{grid-template-columns:1fr;gap:24px}.about-mark{min-height:190px}.about-mark img{width:140px;height:180px}.motif-left{right:-120px}.landing-partner{padding:84px 0 64px}.partner-divider{height:26px;border-radius:18px 18px 0 0}.contact-list span{grid-template-columns:26px 1fr}.contact-list small{display:none}.footer-layout{grid-template-columns:1fr}.footer-layout>div:first-child{grid-column:auto}}
 @media(prefers-reduced-motion:reduce){.landing-page *{scroll-behavior:auto!important;transition-duration:.01ms!important}}
 .hero-copy>.landing-kicker{max-width:none;margin:0;color:var(--landing-blue-deep);font-size:12px;line-height:normal}.hero-copy h1{margin-bottom:28px}.hero-buttons{margin-top:0}.partner-copy h2{margin-top:0}.contact-box h3{margin-bottom:20px}.contact-list{margin-top:0}
+.application-download{padding:56px 0;background:#fff;scroll-margin-top:24px}
+.download-layout{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.5fr);gap:48px;align-items:center;border-top:1px solid var(--landing-line);padding-top:40px}
+.application-download h2{margin:0 0 12px;font-size:36px;letter-spacing:-.035em}
+.application-download h2>span{color:var(--landing-blue-deep)}
+.application-download p{color:var(--landing-muted);line-height:1.7;font-size:14px;margin:12px 0 20px}
+.download-options{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.download-options>div{min-width:0}
+.download-options>div+div{border-left:1px solid var(--landing-line);padding-left:32px}
+.download-platform{display:flex;align-items:center;gap:14px}
+.download-platform img{flex-shrink:0;object-fit:contain}
+.download-platform span{font-size:12px;color:var(--landing-muted)}
+.download-options h3{margin:0 0 4px;font-size:19px}
+.download-options small{display:block;margin-top:12px;color:#526b7c;line-height:1.6}
+.download-options .landing-button{min-height:46px;font-size:13px;padding:0 16px;font-weight:600}
+.landing-page .download-options .landing-button.secondary{width:auto;justify-self:start;min-height:40px;margin-top:8px;padding:8px 12px;font-size:12px;background:transparent;box-shadow:none}
+.landing-page .download-options .landing-button.secondary:hover{background:transparent;box-shadow:none;transform:none;border-color:var(--landing-blue-deep)}
+@media(max-width:560px){.landing-page .download-options .landing-button.secondary{min-height:44px;padding:8px;font-size:12px}}
+.download-options a:focus-visible{outline:2px solid var(--landing-blue-deep);outline-offset:4px}
+.download-options .android-download-button{cursor:pointer}
+.download-options .android-download-button:disabled{cursor:wait;opacity:.7}
+.download-options .android-download-button:focus-visible{outline:2px solid var(--landing-blue-deep);outline-offset:4px}
+.download-options .download-feedback{font-size:12px;margin:12px 0 0}
+/* Shared canvas lets the mockup rise into the partnership area. */
+.partner-download-group{position:relative;isolation:isolate;background:#fff}
+.partner-download-group::after{content:"";position:absolute;z-index:0;right:0;bottom:0;width:min(600px,55vw);aspect-ratio:2/1;background:url('/assets/decoration/mockupbg.png') right center/100% auto no-repeat;opacity:.12;mix-blend-mode:multiply;pointer-events:none}
+.landing-page .partner-download-group .landing-partner{background:transparent;overflow:visible}
+.partner-download-group .landing-partner::before,.partner-download-group .landing-partner::after{content:none}
+.partner-download-group .application-download{position:relative;background:transparent;padding:40px 0 56px;overflow:visible}
+.download-phone-mockup{position:absolute;z-index:0;bottom:0;left:-80px;width:480px;height:auto;opacity:.75;pointer-events:none;user-select:none}
+.partner-download-group .download-layout{position:relative;z-index:2;border:0;padding-top:0}
+@media(max-width:900px){.download-layout{grid-template-columns:1fr;gap:24px}}
+/* Contact aligns with the first divider in the title | Android | iOS layout. */
+@media(min-width:821px){
+  .landing-page .partner-download-group .partner-layout,
+  .landing-page .partner-download-group .download-layout{grid-template-columns:minmax(0,1.2fr) repeat(2,minmax(0,.9fr));gap:32px}
+  .partner-download-group .partner-copy{grid-column:1}
+  .landing-page .partner-download-group .contact-box{grid-column:2 / 4}
+  .partner-download-group .download-options{display:contents}
+  .landing-page .partner-download-group .contact-box,
+  .landing-page .partner-download-group .download-options>div{padding-left:28px;border-left:1px solid var(--landing-line)}
+}
+/* Tablet layouts prioritize content over the oversized phone decoration. */
+@media(min-width:681px) and (max-width:1440px){
+  .download-phone-mockup{display:none}
+  .partner-download-group::after{width:min(440px,50vw);opacity:.07}
+  .landing-page .partner-download-group .landing-container{width:min(calc(100% - 64px),1160px)}
+  .landing-page .partner-download-group .landing-partner{padding:56px 0 32px}
+  .landing-page .partner-download-group .partner-layout{gap:32px}
+  .landing-page .partner-download-group .partner-copy h2{font-size:34px;line-height:1.25;margin-bottom:16px}
+  .landing-page .partner-download-group .partner-copy>p{font-size:14px;line-height:1.75}
+  .landing-page .partner-download-group .contact-box{padding-left:28px}
+  .landing-page .partner-download-group .contact-box .partner-contact-intro{font-size:14px;line-height:1.7}
+  .partner-download-group .application-download{padding:32px 0 48px}
+  .partner-download-group .download-layout{gap:32px;align-items:start}
+  .partner-download-group .download-intro h2{font-size:32px;line-height:1.3;margin:0}
+  .partner-download-group .download-options{gap:24px}
+  .partner-download-group .download-options>div+div{padding-left:24px}
+  .landing-page .download-options .landing-button.secondary{min-height:44px}
+}
+@media(min-width:681px) and (max-width:820px){
+  .landing-page .partner-download-group .contact-box{padding:24px 0 0}
+  .partner-download-group .download-intro{max-width:500px}
+}
+@media(max-width:680px){
+  .landing-page .partner-download-group .landing-partner{padding-bottom:56px}
+  .partner-download-group .application-download{padding:32px 0 40px}
+  .download-phone-mockup{display:none}
+  .partner-download-group::after{width:80%;opacity:.1}
+  .partner-download-group .download-layout{padding:0;gap:24px}
+}
+.landing-page.ios-guide{min-height:100dvh;padding:32px 0 48px;background:var(--landing-pale)}
+.ios-guide .landing-container{max-width:1000px}
+.ios-guide .ios-guide-back{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:14px;text-decoration:none;color:var(--landing-blue-deep)}
+.ios-guide-layout{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.3fr);gap:64px;margin-top:40px;align-items:start}
+.ios-guide-intro>img{object-fit:contain;display:block;margin-bottom:24px}
+.ios-guide-intro .section-kicker{font-size:11px}
+.ios-guide h1{font-size:clamp(32px,4vw,46px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+.ios-guide p{font-size:14px;line-height:1.7;color:var(--landing-muted)}
+.ios-guide .ios-guide-note{font-size:12px;max-width:290px;margin-top:24px}
+.ios-guide-steps{list-style:none;padding:0;margin:0;counter-reset:steps}
+.ios-guide-steps li{display:grid;grid-template-columns:32px minmax(0,1fr);gap:16px;padding:24px 0;border-bottom:1px solid var(--landing-line)}
+.ios-guide-steps li:first-child{padding-top:0}
+.ios-step-number{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#e1eef6;color:var(--landing-blue-deep);font-size:13px;font-weight:600}
+.ios-step-title{display:flex;gap:10px;align-items:center;color:var(--landing-blue-deep)}
+.ios-step-title h2{font-size:17px;line-height:1.4;margin:0;color:var(--landing-ink)}
+.ios-step-title svg{flex-shrink:0}
+.ios-guide-steps p{margin:8px 0 0;overflow-wrap:anywhere}
+.ios-guide-steps a{color:var(--landing-blue-deep);text-decoration:underline;text-underline-offset:3px}
+.ios-guide-finish{display:flex;align-items:center;gap:16px;margin-top:32px;padding-top:24px;border-top:1px solid var(--landing-line)}
+.ios-guide-finish img{object-fit:contain;flex-shrink:0}
+.ios-guide-finish p{margin:0;font-size:13px}
+.ios-guide-finish strong{color:var(--landing-ink)}
+.ios-guide a:focus-visible{outline:2px solid var(--landing-blue-deep);outline-offset:4px}
+@media(max-width:680px){.ios-guide-layout{grid-template-columns:1fr;gap:32px;margin-top:24px}.ios-guide-intro>img{margin-bottom:16px}.ios-guide .ios-guide-note{max-width:none;margin-top:12px}.ios-guide-steps li{padding:20px 0}.ios-guide-finish{align-items:flex-start}}
+@media(max-width:560px){
+  .application-download{padding:32px 0 40px}
+  .download-layout{padding-top:24px;gap:24px}
+  .application-download h2{font-size:26px;line-height:1.3}
+  .download-options{position:relative;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+  .download-options::after{content:"";position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--landing-line);pointer-events:none}
+  .download-options>div{display:grid;grid-template-rows:auto 1fr auto;align-items:start}
+  .download-options>div+div,.partner-download-group .download-options>div+div{border:0;padding:0}
+  .download-platform{gap:8px}
+  .download-platform img{width:28px;height:28px}
+  .download-options h3{font-size:16px;margin-bottom:2px}
+  .download-platform span{font-size:12px}
+  .download-options p{font-size:12px;line-height:1.6;margin:12px 0 16px}
+  .landing-page .download-options .landing-button{width:100%;min-height:44px;padding:10px 8px;font-size:12px;gap:6px;text-align:center}
+  .download-options .android-download-button svg{display:none}
+  .download-options .download-feedback{grid-row:4}
+}
 /* Compact footer, with the description aligned to the brand text. */
 .identity-content>p{text-align:justify;text-align-last:left;text-justify:inter-word}
 .identity-strip{z-index:1;box-shadow:0 14px 24px -16px rgba(35,98,135,.3)}

@@ -4,6 +4,7 @@ import './landing.css';
 import {api} from './api';
 import {defaultWebsite,type WebsiteSettings} from './website';
 import {LandingUpdates} from './LandingUpdates';
+import {AndroidDownload} from './AndroidDownload';
 
 type LandingProps={signedIn:boolean};
 const landingNavigation=[
@@ -69,6 +70,7 @@ export function Landing({signedIn}:LandingProps){
         </div>
       </section>
 
+      <div className="partner-download-group">
       <section className="landing-partner" id="kemitraan" aria-labelledby="partner-title">
         <div className="landing-container partner-layout">
           <div className="partner-copy">
@@ -85,6 +87,11 @@ export function Landing({signedIn}:LandingProps){
           </div>
         </div>
       </section>
+      <section className="application-download" id="download-aplikasi" aria-labelledby="download-title">
+        <img className="download-phone-mockup" src="/assets/decoration/phonemockup.webp" width="1080" height="1080" alt="" loading="lazy" decoding="async"/>
+        <div className="landing-container download-layout"><div className="download-intro"><h2 id="download-title">Lebih dekat dengan <span>Borneo Marketplace.</span></h2></div><div className="download-options"><div><div className="download-platform"><img src="/assets/logo/android.svg" width="36" height="36" alt=""/><div><h3>Android</h3><span>Aplikasi APK</span></div></div><AndroidDownload/></div><div><div className="download-platform"><img src="/assets/logo/apple.svg" width="36" height="36" alt=""/><div><h3>iOS</h3><span>iPhone &amp; iPad</span></div></div><a className="landing-button secondary" href="/panduan-ios">Lihat Panduan iOS</a></div></div></div>
+      </section>
+      </div>
     </main>
     <footer className="landing-footer">
       <div className="landing-container footer-layout">
