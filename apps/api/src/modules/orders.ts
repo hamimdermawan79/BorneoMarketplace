@@ -75,10 +75,11 @@ export async function orderRoutes(app:FastifyInstance){
     });}catch(error){const known=error as Error&{statusCode?:number};return reply.code(known.statusCode||500).send({message:known.statusCode?known.message:'Pesanan gagal dibuat.'});}
   });
 
-  app.get('/orders',{preHandler:authenticate},async request=>{
+  const readOrders=async(user:{id:string;role:string;organizationId:string|null},id?:string)=>{
     const params:unknown[]=[];let scope='';
-    if(request.user.role==='ADMIN'){params.push(request.user.id);scope=`WHERE o.admin_user_id=$1`;}
-    if(request.user.role==='BUYER'){params.push(request.user.organizationId);scope=`WHERE o.kitchen_id=$1`;}
+    if(user.role==='ADMIN'){params.push(user.id);scope=`WHERE o.admin_user_id=$1`;}
+    if(user.role==='BUYER'){params.push(user.organizationId);scope=`WHERE o.kitchen_id=$1`;}
+    if(id){params.push(id);scope+=`${scope?' AND':'WHERE'} o.id=$${params.length}`;}
     const {rows}=await pool.query(`SELECT o.id,o.order_no AS "orderNo",o.status,o.needed_date AS "neededDate",o.estimated_total AS "estimatedTotal",o.final_total AS "finalTotal",o.created_at AS "createdAt",k.name AS kitchen,
       COALESCE(o.final_total,SUM(COALESCE(oi.final_total,oi.estimated_total)),0) AS "currentTotal",
       COALESCE(json_agg(json_build_object('id',oi.id,'name',oi.product_name,'quantity',oi.ordered_quantity,'orderUnit',oi.order_unit,'priceUnit',oi.price_unit,'unitPrice',oi.unit_price,'estimatedWeightKg',oi.estimated_weight_kg,'actualWeightKg',oi.actual_weight_kg,'prepared',oi.prepared,'allocations',(
@@ -87,6 +88,13 @@ export async function orderRoutes(app:FastifyInstance){
       FROM orders o JOIN organizations k ON k.id=o.kitchen_id LEFT JOIN order_items oi ON oi.order_id=o.id ${scope}
       GROUP BY o.id,k.name ORDER BY o.needed_date DESC,o.created_at DESC,o.id`,params);
     return rows;
+  };
+  app.get('/orders',{preHandler:authenticate},request=>readOrders(request.user));
+  app.get('/orders/:id',{preHandler:authenticate},async request=>{
+    const {id}=z.object({id:z.string().uuid()}).parse(request.params);
+    const rows=await readOrders(request.user,id);
+    if(!rows.length)reject('Pesanan tidak ditemukan.',404);
+    return rows[0];
   });
 
   app.patch('/allocations/:id/prepared',{preHandler:allow('ADMIN')},async(request,reply)=>{
@@ -100,10 +108,7 @@ export async function orderRoutes(app:FastifyInstance){
       if(!['SUBMITTED','PREPARING'].includes(row.status))reject('Alokasi barang tidak dapat diubah pada status pesanan ini.',409);
       await client.query('UPDATE order_item_allocations SET prepared=$1 WHERE id=$2',[input.prepared,params.id]);
       await client.query(`UPDATE order_items SET prepared=NOT EXISTS(SELECT 1 FROM order_item_allocations WHERE order_item_id=$1 AND NOT prepared) WHERE id=$1`,[row.item_id]);
-      if(row.status==='SUBMITTED'){
-        await client.query(`UPDATE orders SET status='PREPARING',updated_at=now() WHERE id=$1`,[row.order_id]);
-        await client.query(`INSERT INTO order_status_history(order_id,from_status,to_status,changed_by,note) VALUES($1,'SUBMITTED','PREPARING',$2,'Penyiapan barang dimulai')`,[row.order_id,request.user.id]);
-      }
+      // A checklist is only a marker. Preparation starts through the explicit status action.
       return {success:true};
     });
   });
@@ -124,7 +129,7 @@ export async function orderRoutes(app:FastifyInstance){
 
   app.patch('/orders/:id/status',{preHandler:authenticate},async(request,reply)=>{
     const params=z.object({id:z.string().uuid()}).parse(request.params);const input=z.object({status:z.enum(['PREPARING','SHIPPED','AWAITING_KITCHEN','COMPLETED','CANCELLED']),note:z.string().max(300).optional()}).parse(request.body);
-    await withTransaction(async client=>{
+    const changed=await withTransaction(async client=>{
       const order=await visibleOrder(client,params.id,request.user);if(!order)reject('Pesanan tidak ditemukan.',404);
       if(request.user.role==='BUYER'&&!['COMPLETED','CANCELLED'].includes(input.status))reject('Aksi tidak diizinkan.',403);
       if(request.user.role==='ADMIN'&&input.status==='COMPLETED')reject('Penyelesaian akhir harus dikonfirmasi dapur.',403);
@@ -153,9 +158,10 @@ export async function orderRoutes(app:FastifyInstance){
         const total=await client.query('SELECT COALESCE(sum(COALESCE(final_total,estimated_total)),0) AS total FROM order_items WHERE order_id=$1',[order.id]);
         await client.query('UPDATE orders SET final_total=$1 WHERE id=$2',[boundedTotal(Number(total.rows[0].total)),order.id]);
       }
-      await client.query('UPDATE orders SET status=$1,updated_at=now() WHERE id=$2',[input.status,order.id]);
+      const changed=await client.query('UPDATE orders SET status=$1,updated_at=now() WHERE id=$2 RETURNING id,status,final_total AS "finalTotal"',[input.status,order.id]);
       await client.query('INSERT INTO order_status_history(order_id,from_status,to_status,changed_by,note) VALUES($1,$2,$3,$4,$5)',[order.id,order.status,input.status,request.user.id,input.note||null]);
+      return changed.rows[0];
     });
-    return {success:true,status:input.status};
+    return {success:true,status:input.status,...changed};
   });
 }
