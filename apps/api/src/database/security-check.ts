@@ -106,9 +106,16 @@ try{
   assert.equal(Number((await one('SELECT quantity_reserved FROM inventory_batches')).quantity_reserved),10);check('concurrent checkout retry reserves once');
   assert.equal((await call('GET','/api/orders',tbuyerB)).json().length,0);
   assert.equal((await call('GET','/api/orders',tb)).json().length,0);
+  assert.equal((await call('GET',`/api/orders/${id}`,tb)).statusCode,404);
+  assert.equal((await call('GET',`/api/orders/${id}`,tbuyerB)).statusCode,404);
+  assert.equal((await call('GET',`/api/orders/${id}`,ta)).statusCode,200);
   assert.equal((await call('PATCH',`/api/orders/${id}/status`,tb,{status:'CANCELLED'})).statusCode,404);check('orders isolated across admins and kitchens');
   const allocation=await one('SELECT id FROM order_item_allocations');
   assert.equal((await call('PATCH',`/api/allocations/${allocation.id}/prepared`,ta,{prepared:true})).statusCode,200);
+  assert.equal((await one('SELECT status FROM orders WHERE id=$1',[id])).status,'SUBMITTED');
+  const savedChecklist=await call('GET',`/api/orders/${id}`,ta);
+  assert.equal(savedChecklist.json().items[0].allocations[0].prepared,true);
+  assert.equal((await call('PATCH',`/api/orders/${id}/status`,ta,{status:'PREPARING'})).statusCode,200);
   const ships=await Promise.all([call('PATCH',`/api/orders/${id}/status`,ta,{status:'SHIPPED'}),call('PATCH',`/api/orders/${id}/status`,ta,{status:'SHIPPED'})]);
   assert.deepEqual(ships.map(r=>r.statusCode).sort(),[200,409]);
   assert.equal(Number((await one('SELECT quantity_available FROM inventory_batches')).quantity_available),90);
@@ -135,6 +142,7 @@ try{
   const weightedItem=await one('SELECT id FROM order_items WHERE order_id=$1',[weightedId]);
   const weightedAllocation=await one('SELECT id FROM order_item_allocations WHERE order_item_id=$1',[weightedItem.id]);
   assert.equal((await call('PATCH',`/api/allocations/${weightedAllocation.id}/prepared`,ta,{prepared:true})).statusCode,200);
+  assert.equal((await call('PATCH',`/api/orders/${weightedId}/status`,ta,{status:'PREPARING'})).statusCode,200);
   assert.equal((await call('PATCH',`/api/orders/${weightedId}/status`,ta,{status:'SHIPPED'})).statusCode,409);
   assert.equal((await call('PATCH',`/api/order-items/${weightedItem.id}/actual-weight`,tb,{actualWeightKg:9})).statusCode,404);
   assert.equal((await call('PATCH',`/api/order-items/${weightedItem.id}/actual-weight`,ta,{actualWeightKg:21})).statusCode,200);
@@ -176,6 +184,7 @@ try{
   const specialOrderId=approvals.find(r=>r.statusCode===200)!.json().orderId;
   const specialAllocation=await one('SELECT a.id FROM order_item_allocations a JOIN order_items i ON i.id=a.order_item_id WHERE i.order_id=$1',[specialOrderId]);
   assert.equal((await call('PATCH',`/api/allocations/${specialAllocation.id}/prepared`,ta,{prepared:true})).statusCode,200);
+  assert.equal((await one('SELECT status FROM orders WHERE id=$1',[specialOrderId])).status,'PREPARING');
   assert.equal((await call('PATCH',`/api/orders/${specialOrderId}/status`,ta,{status:'SHIPPED'})).statusCode,200);
   check('special request approval is tenant-scoped, idempotent and vendor order ships');
   const partner=await call('POST','/api/partners',ta,{username:'new.kitchen',name:'New Kitchen',phone:'081234567890',address:'Test street 123',gmapsUrl:'https://maps.google.com/'});
