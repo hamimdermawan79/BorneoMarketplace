@@ -5,6 +5,10 @@
 .stock-form-fields{display:grid;gap:18px;padding:20px;overflow-y:auto;min-height:0;overscroll-behavior:contain}
 .stock-setup-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .stock-setup-grid.master-mode{grid-template-columns:minmax(0,1fr)}
+.stock-modal .stock-modal-grid>label{min-width:0}
+.stock-select{position:relative;display:block;min-width:0;width:100%}
+.app-shell .workspace>main .stock-modal .stock-select select{display:block;width:100%;min-width:0;min-height:44px;padding:0 42px 0 12px;line-height:normal;-webkit-appearance:none;appearance:none;background-image:none;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.stock-select>svg{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#526b7c;pointer-events:none}
 .stock-source-fixed{margin:0;color:#526b7c;font-size:12px}
 .stock-source-fixed strong{color:#18344b;font-weight:600}
 .stock-modal-form .stock-choice{min-width:0;border:0;margin:0;padding:0}
