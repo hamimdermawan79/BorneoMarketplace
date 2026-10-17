@@ -6,6 +6,30 @@ const row={order_no:'INV-CONTOH-001',needed_date:'2026-10-03',kitchen:'Dapur Con
 const pageSizes=(pdf:Buffer)=>[...pdf.toString('latin1').matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)].map(match=>({width:Number(match[1]),height:Number(match[2])}));
 
 describe('landscape financial report PDF',()=>{
+  it('prints only source headings per day and never leaves a heading alone at a page end',async()=>{
+    const calls:{value:string;page:number;y:number;font:string}[]=[];
+    const original=PDFDocument.prototype.text;
+    const spy=vi.spyOn(PDFDocument.prototype,'text').mockImplementation(function(this:any,...args:any[]){
+      calls.push({value:args[0],page:this._pageBuffer.length,y:args[2],font:this._font.name});
+      return (original as any).apply(this,args);
+    });
+    try{
+      const rows=Array.from({length:18},(_,i)=>({...row,needed_date:i<9?'2026-10-10':'2026-10-11',order_no:`INV-${i}`,
+        sources:i%3===0?'COOPERATIVE':'VENDOR',source_key:i%3===0?'COOPERATIVE':`VENDOR:${i%3}`,
+        source_label:i%3===0?'Barang Koperasi':`Vendor ${i%3===1?'A':'B'}`}));
+      await salesPdf(rows,{orientation:'portrait'});
+      const labels=calls.filter(call=>call.value==='Barang Koperasi'||call.value==='Vendor A'||call.value==='Vendor B');
+      expect(labels.length).toBeGreaterThanOrEqual(6);
+      expect(labels.every(call=>call.font==='Times-Bold')).toBe(true);
+      for(const label of labels){
+        const position=calls.indexOf(label);
+        const date=calls.slice(position+1).find(call=>/^\d{2}\/\d{2}\/\d{4}$/.test(call.value));
+        expect(date?.page).toBe(label.page);
+        expect(date!.y).toBeGreaterThan(label.y);
+      }
+      expect(calls.filter(call=>call.value==='Laporan Keuangan')).toHaveLength(1);
+    }finally{spy.mockRestore()}
+  });
   it.each([0,1,40])('supports portrait with %i rows on every page',async count=>{
     const sizes=pageSizes(await salesPdf(Array.from({length:count},()=>row),{orientation:'portrait'}));
     expect(sizes.length).toBeGreaterThan(0);

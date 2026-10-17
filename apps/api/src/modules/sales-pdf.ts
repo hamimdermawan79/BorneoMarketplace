@@ -1,9 +1,10 @@
 import PDFDocument from 'pdfkit';
 import sharp from 'sharp';
 import { fileURLToPath } from 'node:url';
+import {sortSalesRows, salesDay, salesSourceKey, salesSourceLabel, type SalesRow} from './sales-groups.js';
 
-type SalesRow={order_no:string;needed_date:string|Date;kitchen:string;admin:string;product_name:string;ordered_quantity:number|string;order_unit:string;actual_weight_kg:number|string|null;unit_price:number|string;total:number|string;sources:string};
 export async function salesPdf(rows:SalesRow[],period:{from?:string;to?:string;orientation?:'portrait'|'landscape'}){
+  rows=sortSalesRows(rows);
   // Convert in memory for PDFKit; keep WebP as the sole source asset.
   const logo=await sharp(fileURLToPath(new URL('../../../web/public/assets/logo/logo.webp',import.meta.url))).resize(256,256,{fit:'inside',withoutEnlargement:true}).png().toBuffer();
   const portrait=period.orientation==='portrait';
@@ -11,7 +12,7 @@ export async function salesPdf(rows:SalesRow[],period:{from?:string;to?:string;o
   const chunks:Buffer[]=[];
   const result=new Promise<Buffer>((resolve,reject)=>{doc.on('data',chunk=>chunks.push(chunk));doc.on('end',()=>resolve(Buffer.concat(chunks)));doc.on('error',reject)});
   const ink='#222222',line='#777777',width=doc.page.width-72;
-  const number=(value:number|string)=>Number(value).toLocaleString('id-ID',{maximumFractionDigits:2});
+  const number=(value:number|string)=>Number(value).toLocaleString('id-ID',{maximumFractionDigits:3});
   const currency=(value:number|string)=>`Rp ${number(value)}`;
   const titleCase=(value:string)=>value.toLocaleLowerCase('id-ID').replace(/\p{L}[\p{L}\p{M}]*/gu,word=>word[0].toLocaleUpperCase('id-ID')+word.slice(1));
   const date=(value:string|Date)=>new Date(value).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Asia/Jakarta'});
@@ -49,7 +50,8 @@ export async function salesPdf(rows:SalesRow[],period:{from?:string;to?:string;o
       text(col.label,x+6,y+(height-h)/2,col.width-12,fontSize,true,'center');x+=col.width;});
     y+=height;
   };
-  const next=()=>{doc.addPage();y=36;header();};
+  let previousGroup='';
+  const next=()=>{doc.addPage();y=36;header();previousGroup='';};
   header();
   rows.forEach((row,rowIndex)=>{
     const cells=[date(row.needed_date),titleCase(row.kitchen),titleCase(row.product_name),`${number(row.ordered_quantity)} ${row.order_unit}`,row.actual_weight_kg==null?`${number(row.ordered_quantity)} ${row.order_unit}`:`${number(row.actual_weight_kg)} kg`,currency(row.unit_price),currency(row.total)];
@@ -61,7 +63,16 @@ export async function salesPdf(rows:SalesRow[],period:{from?:string;to?:string;o
     const height=Math.max(44,...heights.map(h=>h+16));
     // Keep the last item with its total instead of producing a total-only page.
     const bottomSpace=rowIndex===rows.length-1?128:82;
-    if(y+height>doc.page.height-bottomSpace)next();
+    const group=`${salesDay(row.needed_date)}|${salesSourceKey(row)}`;
+    doc.font('Times-Bold').fontSize(fontSize);
+    const groupLabel=titleCase(salesSourceLabel(row));
+    const groupHeight=Math.max(22,doc.heightOfString(groupLabel,{width:width-12})+10);
+    if(y+height+(group===previousGroup?0:groupHeight)>doc.page.height-bottomSpace)next();
+    if(group!==previousGroup){
+      doc.lineWidth(.5).rect(36,y,width,groupHeight).strokeColor(line).stroke();
+      text(groupLabel,42,y+5,width-12,fontSize,true);
+      y+=groupHeight;previousGroup=group;
+    }
     let x=36;cells.forEach((cell,i)=>{
       doc.lineWidth(.5).rect(x,y,cols[i].width,height).strokeColor(line).stroke();
       const top=y+(height-heights[i])/2;
