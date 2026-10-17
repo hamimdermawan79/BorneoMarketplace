@@ -5,6 +5,7 @@ import { CheckCircle2, ClipboardCheck, Package, Plus, Search, ShoppingCart, X } 
 import { api, type User } from './api';
 import {BuyerSettings} from './AccountSettings';
 import {ProductOrderDialog} from './ProductOrderDialog';
+import {cartStorageKey, readBuyerCart, saveBuyerCart, type CartQuantities} from './buyer-cart';
 
 type Catalog = { id: string; sku: string; name: string; category: string; image: string | null; orderUnit: string; priceUnit: string; weighingRequired: boolean; estimatedKgPerUnit: number | null; salePrice: number; availableStock: number };
 type OrderItem = { id: string; name: string; quantity: number; orderUnit: string; priceUnit: string; unitPrice: number; actualWeightKg: number | null };
@@ -14,10 +15,26 @@ const money = (value: number) => new Intl.NumberFormat('id-ID', { style: 'curren
 const statusLabel: Record<string, string> = { SUBMITTED: 'Pesanan masuk', PREPARING: 'Sedang disiapkan', SHIPPED: 'Dalam pengiriman', AWAITING_KITCHEN: 'Menunggu konfirmasi dapur', COMPLETED: 'Selesai', CANCELLED: 'Dibatalkan' };
 
 export function BuyerPanel({ page, user, go, onLogout }: { page: string; user: User; go: (page: string) => void; onLogout: () => void }) {
-  const [catalog, setCatalog] = useState<Catalog[]>([]); const [orders, setOrders] = useState<Order[]>([]); const [requests, setRequests] = useState<SpecialRequest[]>([]); const [quantities, setQuantities] = useState<Record<string, number>>({}); const [notice, setNotice] = useState(''); const [search, setSearch] = useState(''); const [category, setCategory] = useState('Semua'); const [cartOpen, setCartOpen] = useState(false); const [requestOpen, setRequestOpen] = useState(false); const [selectedProduct, setSelectedProduct] = useState<Catalog | null>(null); const [draftQuantity, setDraftQuantity] = useState('1'); const [history, setHistory] = useState(false);
+  // A different account/kitchen must never inherit the previous account's draft.
+  return <BuyerPanelContent key={cartStorageKey(user)} page={page} user={user} go={go} onLogout={onLogout}/>;
+}
+
+function BuyerPanelContent({ page, user, go, onLogout }: { page: string; user: User; go: (page: string) => void; onLogout: () => void }) {
+  const [catalog, setCatalog] = useState<Catalog[]>([]); const [orders, setOrders] = useState<Order[]>([]); const [requests, setRequests] = useState<SpecialRequest[]>([]); const [quantities, setQuantities] = useState<CartQuantities>(() => readBuyerCart(user)); const [notice, setNotice] = useState(''); const [search, setSearch] = useState(''); const [category, setCategory] = useState('Semua'); const [cartOpen, setCartOpen] = useState(false); const [requestOpen, setRequestOpen] = useState(false); const [selectedProduct, setSelectedProduct] = useState<Catalog | null>(null); const [draftQuantity, setDraftQuantity] = useState('1'); const [history, setHistory] = useState(false);
+  const storageWarning = 'Keranjang hanya tersimpan sementara karena penyimpanan perangkat tidak tersedia. Jangan tutup halaman sebelum memesan.';
+  const updateQuantities = (next: CartQuantities) => {
+    // Save during the action, not on unload (which mobile browsers may never fire).
+    const saved = saveBuyerCart(user, next);
+    setQuantities(next);
+    return saved;
+  };
+  const removeFromCart = (id: string) => {
+    const next = {...quantities}; delete next[id];
+    if (!updateQuantities(next)) setNotice(storageWarning);
+  };
   const load = () => Promise.all([api<Catalog[]>('/catalog').then(setCatalog), api<Order[]>('/orders').then(setOrders), api<SpecialRequest[]>('/special-requests').then(setRequests)]); useEffect(() => { load() }, []);
   const cartItems = catalog.filter(product => (quantities[product.id] || 0) > 0); const cartCount = cartItems.length; const cartTotal = cartItems.reduce((sum, product) => sum + (quantities[product.id] || 0) * Number(product.salePrice) * (product.weighingRequired ? Number(product.estimatedKgPerUnit) : 1), 0);
-  const checkout = async () => { const items = cartItems.map(product => ({ adminProductId: product.id, quantity: quantities[product.id] })); if (!items.length) return setNotice('Keranjang masih kosong.'); try { await api('/orders', { method: 'POST', body: JSON.stringify({ neededDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10), idempotencyKey: crypto.randomUUID(), items }) }); setQuantities({}); setCartOpen(false); setNotice('Pesanan berhasil dikirim ke admin koperasi.'); await load() } catch (reason) { setNotice((reason as Error).message) } };
+  const checkout = async () => { const items = cartItems.map(product => ({ adminProductId: product.id, quantity: quantities[product.id] })); if (!items.length) return setNotice('Keranjang masih kosong.'); try { await api('/orders', { method: 'POST', body: JSON.stringify({ neededDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10), idempotencyKey: crypto.randomUUID(), items }) }); const saved = updateQuantities({}); setCartOpen(false); setNotice(saved ? 'Pesanan berhasil dikirim ke admin koperasi.' : 'Pesanan berhasil dikirim, tetapi keranjang tersimpan gagal dibersihkan. Periksa riwayat pesanan sebelum memesan lagi.'); await load() } catch (reason) { setNotice((reason as Error).message) } };
   const confirm = async (ids: string[]) => { for (const id of ids) await api(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'COMPLETED' }) }); setNotice('Penerimaan barang berhasil dikonfirmasi.'); await load() };
   const requestItem = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); try { await api('/special-requests', { method: 'POST', body: JSON.stringify({ name: data.get('name'), quantity: data.get('quantity'), unit: data.get('unit'), note: data.get('note') }) }); form.reset(); setRequestOpen(false); setNotice('Permintaan barang dikirim untuk persetujuan admin.'); await load() } catch (reason) { setNotice((reason as Error).message) } };
   if (page === 'dashboard') return <BuyerDashboard user={user} catalog={catalog} orders={orders} requests={requests} go={go} confirm={confirm} />;
@@ -27,7 +44,7 @@ export function BuyerPanel({ page, user, go, onLogout }: { page: string; user: U
   const categories = ['Semua', ...Array.from(new Set(catalog.map(product => product.category))).sort((a, b) => a.localeCompare(b, 'id'))];
   const visible = catalog.filter(product => (category === 'Semua' || product.category === category) && `${product.name} ${product.category}`.toLowerCase().includes(search.toLowerCase()));
   const openProduct = (product: Catalog) => { setSelectedProduct(product); setDraftQuantity(String(quantities[product.id] || 1)) };
-  const addToCart = () => { if (!selectedProduct || !validOrderQuantity(draftQuantity, selectedProduct.weighingRequired)) return; setQuantities(current => ({ ...current, [selectedProduct.id]: Number(draftQuantity) })); setSelectedProduct(null); setNotice(`${selectedProduct.name} ditambahkan ke keranjang.`) };
+  const addToCart = () => { if (!selectedProduct || !validOrderQuantity(draftQuantity, selectedProduct.weighingRequired)) return; const saved = updateQuantities({ ...quantities, [selectedProduct.id]: Number(draftQuantity) }); setSelectedProduct(null); setNotice(saved ? `${selectedProduct.name} ditambahkan ke keranjang.` : storageWarning) };
   return <>
     <PageHeading title="Kebutuhan dapur" className="catalog-heading"/>
     {notice&&<div className="notice" role="status">{notice}</div>}
@@ -41,7 +58,7 @@ export function BuyerPanel({ page, user, go, onLogout }: { page: string; user: U
       <button className="cart-fab catalog-fab" aria-label={`Buka keranjang, ${cartCount} produk`} title="Buka keranjang" onClick={()=>setCartOpen(true)}><ShoppingCart size={20}/><span>{cartCount}</span></button>
     </div>
     {selectedProduct&&<ProductOrderDialog product={selectedProduct} quantity={draftQuantity} onQuantityChange={setDraftQuantity} onAdd={addToCart} onClose={()=>setSelectedProduct(null)}/>}
-    {cartOpen&&<Modal title="Keranjang" close={()=>setCartOpen(false)}>{cartItems.length?<><div className="cart-lines">{cartItems.map(product=><div key={product.id}><span><strong>{product.name}</strong><small>{quantities[product.id]} {product.orderUnit}</small></span><b>{money((quantities[product.id]||0)*Number(product.salePrice)*(product.weighingRequired?Number(product.estimatedKgPerUnit):1))}</b><button aria-label={`Hapus ${product.name} dari keranjang`} onClick={()=>setQuantities(current=>({...current,[product.id]:0}))}><X size={16}/></button></div>)}</div><div className="cart-total"><span>Total sementara</span><strong>{money(cartTotal)}</strong></div><div className="modal-actions"><button onClick={()=>setCartOpen(false)}>Tutup</button><button className="primary" onClick={checkout}>Proses pesanan</button></div></>:<EmptyState title="Keranjang masih kosong" detail="Pilih produk dari katalog untuk memulai pesanan."/>}</Modal>}
+    {cartOpen&&<Modal title="Keranjang" close={()=>setCartOpen(false)}>{cartItems.length?<><div className="cart-lines">{cartItems.map(product=><div key={product.id}><span><strong>{product.name}</strong><small>{quantities[product.id]} {product.orderUnit}</small></span><b>{money((quantities[product.id]||0)*Number(product.salePrice)*(product.weighingRequired?Number(product.estimatedKgPerUnit):1))}</b><button aria-label={`Hapus ${product.name} dari keranjang`} onClick={()=>removeFromCart(product.id)}><X size={16}/></button></div>)}</div><div className="cart-total"><span>Total sementara</span><strong>{money(cartTotal)}</strong></div><div className="modal-actions"><button onClick={()=>setCartOpen(false)}>Tutup</button><button className="primary" onClick={checkout}>Proses pesanan</button></div></>:<EmptyState title="Keranjang masih kosong" detail="Pilih produk dari katalog untuk memulai pesanan."/>}</Modal>}
     {requestOpen&&<Modal title="Pesan barang di luar katalog" close={()=>setRequestOpen(false)}><BuyerRequestForm onSubmit={requestItem} onCancel={()=>setRequestOpen(false)}/></Modal>}
   </>;
 }
