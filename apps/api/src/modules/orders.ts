@@ -41,7 +41,7 @@ export async function orderRoutes(app:FastifyInstance){
       const orderNo=await referenceNumber('ORD',client);
       const order=(await client.query(`INSERT INTO orders(order_no,kitchen_id,admin_user_id,needed_date,note,idempotency_key,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,order_no`,[orderNo,request.user.organizationId,adminId,input.neededDate,input.note||null,input.idempotencyKey,request.user.id])).rows[0];
       let estimatedTotal=0;
-      const products=await client.query(`SELECT ap.id,ap.sale_price,pt.name,pt.order_unit,pt.price_unit,pt.weighing_required,pt.estimated_kg_per_unit
+      const products=await client.query(`SELECT ap.id,ap.sale_price,COALESCE(ap.name_override,pt.name) AS name,pt.order_unit,pt.price_unit,pt.weighing_required,pt.estimated_kg_per_unit
         FROM admin_products ap JOIN product_templates pt ON pt.id=ap.template_id
         WHERE ap.id=ANY($1::uuid[]) AND ap.admin_user_id=$2 AND ap.active AND pt.active
           AND (pt.owner_admin_user_id IS NULL OR pt.owner_admin_user_id=ap.admin_user_id)

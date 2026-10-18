@@ -11,6 +11,11 @@ describe('stock edit dialog',()=>{
   it('still offers editing after an added product runs out of available stock',()=>{
     const product={id:'product',sku:'AP-001',name:'Ayam Potong',category:'Protein',image:null,orderUnit:'Potong',priceUnit:'kg',weighingRequired:true,estimatedKgPerUnit:.8,stockSource:'COOPERATIVE' as const,isMaster:true,hasStock:true,salePrice:30000,availableStock:0,cooperativeStock:0,vendorStock:0};
     const html=renderToStaticMarkup(<Inventory catalog={[product]} vendors={[]} reload={async()=>{}} notify={()=>{}} message=""/>);
-    expect(html).toContain('Ayam Potong');expect(html).toContain('Edit stok');expect(html).not.toContain('Belum ada stok');
+    expect(html).toContain('Ayam Potong');expect(html).toContain('Edit Produk &amp; Stok');expect(html).not.toContain('Belum ada stok');
+  });
+  it('hides an archived master from stock management while retaining an explicit add-stock option',()=>{
+    const product={id:'product',sku:'AP-001',name:'Ayam Potong',category:'Protein',image:null,orderUnit:'Potong',priceUnit:'kg',weighingRequired:true,estimatedKgPerUnit:.8,stockSource:'COOPERATIVE' as const,isMaster:true,hasStock:true,removed:true,salePrice:30000,availableStock:0,cooperativeStock:0,vendorStock:0};
+    const html=renderToStaticMarkup(<Inventory catalog={[product]} vendors={[]} reload={async()=>{}} notify={()=>{}} message=""/>);
+    expect(html).toContain('Belum ada stok');expect(html).not.toContain('Edit Produk &amp; Stok');
   });
 });

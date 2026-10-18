@@ -1,7 +1,8 @@
 import Fastify from 'fastify';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {ZodError} from 'zod';
-const mocks=vi.hoisted(()=>({query:vi.fn(),user:{id:'a1000000-0000-4000-8000-000000000001',role:'ADMIN'}}));
+const mocks=vi.hoisted(()=>({query:vi.fn(),image:vi.fn(),user:{id:'a1000000-0000-4000-8000-000000000001',role:'ADMIN'}}));
+vi.mock('../images/storage.js',()=>({persistProductImage:mocks.image}));
 vi.mock('../database/client.js',()=>({pool:{query:mocks.query},withTransaction:async(work:any)=>work({query:mocks.query})}));
 vi.mock('../types.js',()=>({allow:(...roles:string[])=>async(request:any)=>{if(!roles.includes(mocks.user.role))throw Object.assign(new Error('Tidak diizinkan'),{statusCode:403});request.user={...mocks.user}}}));
 import {stockEditInput,stockDelta,stockManagementRoutes} from './stock-management.js';
@@ -9,10 +10,11 @@ const productId='a2000000-0000-4000-8000-000000000002';const batchId='a3000000-0
 const apps:ReturnType<typeof Fastify>[]=[];
 async function appWith(){const app=Fastify();apps.push(app);app.setErrorHandler((error,_request,reply)=>reply.code(error instanceof ZodError?400:(error as any).statusCode||500).send({message:(error as Error).message}));await app.register(stockManagementRoutes);return app}
 const payload={salePrice:12000,expectedSalePrice:10000,adjustments:[{batchId,quantity:8,expectedQuantity:10}]};
-beforeEach(()=>{vi.clearAllMocks();mocks.user.role='ADMIN';mocks.query.mockResolvedValue({rows:[],rowCount:0})});
+beforeEach(()=>{vi.clearAllMocks();mocks.user.role='ADMIN';mocks.image.mockResolvedValue(null);mocks.query.mockResolvedValue({rows:[],rowCount:0})});
 afterEach(async()=>{await Promise.all(apps.splice(0).map(app=>app.close()))});
 const setupOwn=()=>mocks.query.mockImplementation(async(sql:string)=>{
-  if(sql.includes('FOR UPDATE OF ap'))return {rows:[{id:productId,salePrice:'10000.00'}],rowCount:1};
+  if(sql.includes('FOR UPDATE OF ap'))return {rows:[{id:productId,salePrice:'10000.00',name:'Beras',revision:0}],rowCount:1};
+  if(sql.includes('AS pending'))return {rows:[{pending:false}],rowCount:1};
   if(sql.includes('FROM inventory_batches WHERE'))return {rows:[{id:batchId,available:'10.000',initial:'20.000'}],rowCount:1};
   return {rows:[],rowCount:0};
 });
@@ -57,5 +59,37 @@ describe('stock correction boundary',()=>{
   it('allows price-only edits without touching inventory or existing orders',async()=>{
     setupOwn();const app=await appWith();expect((await app.inject({method:'PATCH',url:`/admin-products/${productId}/stock`,payload:{...payload,adjustments:[]}})).statusCode).toBe(200);
     expect(mocks.query.mock.calls.some(([sql])=>sql.startsWith('UPDATE admin_products'))).toBe(true);expect(mocks.query.mock.calls.some(([sql])=>sql.startsWith('UPDATE inventory_batches'))).toBe(false);
+  });
+  it('edits a local name and removes a photo without changing shared templates or historical orders',async()=>{
+    setupOwn();const app=await appWith();const response=await app.inject({method:'PATCH',url:`/admin-products/${productId}/stock`,payload:{...payload,adjustments:[],name:'Beras Premium',image:null,expectedRevision:0}});
+    expect(response.statusCode).toBe(200);expect(mocks.image).toHaveBeenCalledWith(null,'produk-tambahan');
+    const update=mocks.query.mock.calls.find(([sql])=>sql.includes('SET name_override='))!;
+    expect(update[1]).toEqual([true,'Beras Premium',true,null,productId,mocks.user.id]);
+    expect(mocks.query.mock.calls.some(([sql])=>/UPDATE product_templates|UPDATE order_items/.test(sql))).toBe(false);
+  });
+  it('requires a current version for identity edits before storing any image',async()=>{
+    setupOwn();const app=await appWith();
+    expect((await app.inject({method:'PATCH',url:`/admin-products/${productId}/stock`,payload:{...payload,adjustments:[],name:'Baru'}})).statusCode).toBe(400);
+    expect((await app.inject({method:'PATCH',url:`/admin-products/${productId}/stock`,payload:{...payload,adjustments:[],name:'Baru',expectedRevision:99}})).statusCode).toBe(409);
+    expect(mocks.image).not.toHaveBeenCalled();expect(mocks.query.mock.calls.some(([sql])=>sql.startsWith('UPDATE'))).toBe(false);
+  });
+  it('archives only owned products, logs stock removal, and never deletes history',async()=>{
+    setupOwn();const app=await appWith();const response=await app.inject({method:'DELETE',url:`/admin-products/${productId}`,payload:{confirmation:'Beras',expectedRevision:0}});
+    expect(response.statusCode).toBe(200);
+    const sql=mocks.query.mock.calls.map(([sql])=>sql).join('\n');
+    expect(sql).toContain('quantity_reserved>0');expect(sql).toContain("o.status IN ('SUBMITTED','PREPARING')");
+    expect(sql).toContain('SET active=false,deleted_at=now()');expect(sql).toContain('UPDATE inventory_batches SET quantity_available=0');
+    expect(sql).not.toMatch(/DELETE FROM|UPDATE order_items|UPDATE orders SET/);
+    const audit=mocks.query.mock.calls.find(([sql])=>sql.includes("'DELETE','ADMIN_PRODUCT'"))!;expect(audit[1][0]).toBe(mocks.user.id);
+  });
+  it('blocks deletion with reservations or unsent orders before writing',async()=>{
+    setupOwn();mocks.query.mockImplementationOnce(async()=>({rows:[{id:productId,name:'Beras',revision:0}],rowCount:1})).mockImplementationOnce(async()=>({rows:[{pending:true}],rowCount:1}));
+    const app=await appWith();expect((await app.inject({method:'DELETE',url:`/admin-products/${productId}`,payload:{confirmation:'Beras',expectedRevision:0}})).statusCode).toBe(409);
+    expect(mocks.query.mock.calls.some(([sql])=>sql.startsWith('UPDATE'))).toBe(false);
+  });
+  it('does not let an admin delete another admin product or bypass name confirmation',async()=>{
+    const app=await appWith();expect((await app.inject({method:'DELETE',url:`/admin-products/${productId}`,payload:{confirmation:'Beras',expectedRevision:0}})).statusCode).toBe(404);
+    setupOwn();expect((await app.inject({method:'DELETE',url:`/admin-products/${productId}`,payload:{confirmation:'Salah',expectedRevision:0}})).statusCode).toBe(400);
+    expect(mocks.query.mock.calls.some(([sql])=>sql.startsWith('UPDATE'))).toBe(false);
   });
 });

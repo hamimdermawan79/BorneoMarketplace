@@ -1,6 +1,7 @@
 import {useRef} from 'react';
 import {Upload} from 'lucide-react';
 import {productImageAccept} from './product-images';
+import {ProductImage} from './ProductImage';
 import './photo-upload.css';
 
 type Props={value:string;busy:boolean;disabled?:boolean;centered?:boolean;onSelect:(file:File)=>void;onClear:()=>void};
@@ -9,7 +10,7 @@ export function PhotoUpload({value,busy,disabled=false,centered=false,onSelect,o
   const input=useRef<HTMLInputElement>(null);
   const unavailable=disabled||busy;
   return <div className={centered?'photo-upload photo-upload-centered':'photo-upload'} aria-busy={busy}>
-    {value&&<div className="photo-upload-preview"><img src={value} alt="Pratinjau foto produk"/></div>}
+    {value&&<div className="photo-upload-preview"><ProductImage src={value} alt="Pratinjau foto produk"/></div>}
     <div className="photo-upload-content">
       <strong>Foto produk</strong>
       <div className="photo-upload-actions">

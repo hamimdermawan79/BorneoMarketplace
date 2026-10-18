@@ -4,4 +4,5 @@ import { App } from './App';
 import './styles.css';
 import './app-theme.css';
 import './buyer-catalog.css';
+import './stock-product-editor.css';
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);

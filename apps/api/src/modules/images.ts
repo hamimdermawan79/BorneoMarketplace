@@ -19,7 +19,17 @@ export async function imageRoutes(app:FastifyInstance){
         AND (pt.owner_admin_user_id IS NULL OR pt.owner_admin_user_id=ap.admin_user_id)
         AND ((pt.active AND ap.active AND EXISTS(SELECT 1 FROM inventory_batches ib WHERE ib.admin_product_id=ap.id AND ib.quantity_available>0))
           OR EXISTS(SELECT 1 FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE oi.admin_product_id=ap.id AND o.kitchen_id=$4))
-      ))) LIMIT 1`,[path,request.user.role,request.user.id,request.user.organizationId]);
+      )))
+      UNION ALL
+      SELECT 1 FROM admin_products ap JOIN product_templates pt ON pt.id=ap.template_id
+      WHERE ap.image_override_set AND ap.image_path_override=$1 AND (
+        $2='SUPERADMIN' OR ($2='ADMIN' AND ap.admin_user_id=$3)
+        OR ($2='BUYER' AND EXISTS(SELECT 1 FROM admin_kitchens ak JOIN users manager ON manager.id=ak.admin_user_id
+          WHERE ak.admin_user_id=ap.admin_user_id AND ak.kitchen_id=$4 AND manager.active AND manager.role='ADMIN'
+          AND (pt.owner_admin_user_id IS NULL OR pt.owner_admin_user_id=ap.admin_user_id)
+          AND ((pt.active AND ap.active AND ap.deleted_at IS NULL AND EXISTS(SELECT 1 FROM inventory_batches ib WHERE ib.admin_product_id=ap.id AND ib.quantity_available>0))
+            OR EXISTS(SELECT 1 FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE oi.admin_product_id=ap.id AND o.kitchen_id=$4))
+        ))) LIMIT 1`,[path,request.user.role,request.user.id,request.user.organizationId]);
     if(!access.rowCount)return reply.code(404).send({message:'Gambar tidak ditemukan.'});
     const image=await readProductImage(kind,filename);
     return reply.header('Cache-Control','private, no-store').type('image/webp').send(image);

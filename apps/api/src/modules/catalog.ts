@@ -36,7 +36,7 @@ export async function catalogRoutes(app: FastifyInstance) {
       if(input.image)input.image=await persistProductImage(input.image,'produk-pokok');
       const {rows}=await client.query(`UPDATE product_templates SET name=COALESCE($1,name),category=COALESCE($2,category),image_path=CASE WHEN $3::boolean THEN $4 ELSE image_path END,active=COALESCE($5,active),stock_source=COALESCE($6::source_type,stock_source) WHERE id=$7 AND owner_admin_user_id IS NULL RETURNING id,sku,name,active,stock_source AS "stockSource"`,[input.name??null,input.category??null,Object.prototype.hasOwnProperty.call(input,'image'),input.image??null,input.active??null,input.stockSource??null,params.id]);
       if(!rows.length)return reply.code(404).send({message:'Produk Pokok tidak ditemukan.'});
-      if(rows[0].active)await client.query(`INSERT INTO admin_products(admin_user_id,template_id,sale_price) SELECT id,$1,0 FROM users WHERE role='ADMIN' AND active ON CONFLICT(admin_user_id,template_id) DO UPDATE SET active=true`,[params.id]);
+      if(rows[0].active)await client.query(`INSERT INTO admin_products(admin_user_id,template_id,sale_price) SELECT id,$1,0 FROM users WHERE role='ADMIN' AND active ON CONFLICT(admin_user_id,template_id) DO UPDATE SET active=true WHERE admin_products.deleted_at IS NULL`,[params.id]);
       const {image,...changes}=input;
       await client.query(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,changes) VALUES($1,'UPDATE','PRODUCT_TEMPLATE',$2,$3)`,[request.user.id,params.id,JSON.stringify({...changes,...(image!==undefined?{imageChanged:true}:{})})]);return rows[0];
     });
@@ -68,7 +68,9 @@ export async function catalogRoutes(app: FastifyInstance) {
       adminId = assigned.rows[0].admin_user_id;
     }
     const { rows } = await pool.query(`
-      SELECT ap.id, pt.sku, pt.name, pt.category, pt.image_path AS image,
+      SELECT ap.id, pt.sku, COALESCE(ap.name_override,pt.name) AS name, pt.category,
+        CASE WHEN ap.image_override_set THEN ap.image_path_override ELSE pt.image_path END AS image,
+        ap.deleted_at IS NOT NULL AS removed,
         pt.order_unit AS "orderUnit", pt.price_unit AS "priceUnit",
         pt.stock_source AS "stockSource", (pt.owner_admin_user_id IS NULL) AS "isMaster",
         pt.weighing_required AS "weighingRequired", pt.estimated_kg_per_unit AS "estimatedKgPerUnit",
@@ -77,10 +79,11 @@ export async function catalogRoutes(app: FastifyInstance) {
         COALESCE(SUM(ib.quantity_available) FILTER(WHERE ib.source='VENDOR'),0) AS "vendorStock"
       FROM admin_products ap JOIN product_templates pt ON pt.id=ap.template_id
       LEFT JOIN inventory_batches ib ON ib.admin_product_id=ap.id
-      WHERE ap.admin_user_id=$1 AND ap.active AND pt.active AND (pt.owner_admin_user_id IS NULL OR pt.owner_admin_user_id=ap.admin_user_id)
+      WHERE ap.admin_user_id=$1 AND pt.active AND (pt.owner_admin_user_id IS NULL OR pt.owner_admin_user_id=ap.admin_user_id)
+        AND ((ap.active AND ap.deleted_at IS NULL) OR ($2::boolean=false AND pt.owner_admin_user_id IS NULL AND ap.deleted_at IS NOT NULL))
       GROUP BY ap.id,pt.id
       HAVING $2::boolean=false OR COALESCE(SUM(ib.quantity_available),0)>0
-      ORDER BY pt.category,pt.name`, [adminId,request.user.role==='BUYER']);
+      ORDER BY pt.category,COALESCE(ap.name_override,pt.name)`, [adminId,request.user.role==='BUYER']);
     return rows;
   });
 
@@ -88,7 +91,7 @@ export async function catalogRoutes(app: FastifyInstance) {
     const input = z.object({ templateId:z.string().uuid(), salePrice:priceInput }).parse(request.body);
     const { rows } = await pool.query(`INSERT INTO admin_products(admin_user_id,template_id,sale_price)
       SELECT $1,id,$3 FROM product_templates WHERE id=$2 AND active AND (owner_admin_user_id IS NULL OR owner_admin_user_id=$1)
-      ON CONFLICT(admin_user_id,template_id) DO UPDATE SET sale_price=excluded.sale_price,active=true RETURNING id`, [request.user.id,input.templateId,input.salePrice]);
+      ON CONFLICT(admin_user_id,template_id) DO UPDATE SET sale_price=excluded.sale_price,active=true,deleted_at=NULL,edit_version=admin_products.edit_version+1 RETURNING id`, [request.user.id,input.templateId,input.salePrice]);
     if (!rows.length) return reply.code(404).send({ message:'Produk tidak ditemukan.' });
     return { id: rows[0].id };
   });
@@ -115,10 +118,9 @@ export async function catalogRoutes(app: FastifyInstance) {
         const template=(await client.query(`INSERT INTO product_templates(sku,name,category,image_path,order_unit,price_unit,owner_admin_user_id,stock_source) VALUES('CUS-'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,10)),$1,$2,$3,$4,$4,$5,$6) RETURNING id`,[input.customProduct.name,input.customProduct.category,input.customProduct.image||null,input.customProduct.unit,request.user.id,source])).rows[0];
         adminProductId=(await client.query('INSERT INTO admin_products(admin_user_id,template_id,sale_price) VALUES($1,$2,$3) RETURNING id',[request.user.id,template.id,input.salePrice])).rows[0].id;
       }else{
-        const ownership = await client.query('SELECT pt.stock_source,pt.owner_admin_user_id FROM admin_products ap JOIN product_templates pt ON pt.id=ap.template_id WHERE ap.id=$1 AND ap.admin_user_id=$2 AND pt.active AND (pt.owner_admin_user_id IS NULL OR pt.owner_admin_user_id=$2) FOR SHARE OF pt', [adminProductId,request.user.id]);
+        const ownership = await client.query('SELECT pt.stock_source,pt.owner_admin_user_id FROM admin_products ap JOIN product_templates pt ON pt.id=ap.template_id WHERE ap.id=$1 AND ap.admin_user_id=$2 AND pt.active AND (ap.active OR (ap.deleted_at IS NOT NULL AND pt.owner_admin_user_id IS NULL)) AND (pt.owner_admin_user_id IS NULL OR pt.owner_admin_user_id=$2) FOR UPDATE OF ap FOR SHARE OF pt', [adminProductId,request.user.id]);
         if (!ownership.rowCount) throw Object.assign(new Error('Produk tidak ditemukan.'), { statusCode:404 });
         source=resolveStockSource(input.source,ownership.rows[0].owner_admin_user_id===null?ownership.rows[0].stock_source:undefined);
-        await client.query('SELECT id FROM admin_products WHERE id=$1 FOR UPDATE',[adminProductId]);
       }
       if(source==='VENDOR'&&!input.vendorName)throw Object.assign(new Error('Nama vendor wajib diisi.'),{statusCode:400});
       let vendorId:string|null=null;
@@ -130,7 +132,7 @@ export async function catalogRoutes(app: FastifyInstance) {
           vendorId=created.rows[0].id;
         }
       }
-      await client.query('UPDATE admin_products SET sale_price=$1,active=true WHERE id=$2',[input.salePrice,adminProductId]);
+      await client.query('UPDATE admin_products SET sale_price=$1,active=true,deleted_at=NULL,edit_version=edit_version+1 WHERE id=$2',[input.salePrice,adminProductId]);
       const { rows } = await client.query(`INSERT INTO inventory_batches(admin_product_id,source,vendor_id,quantity_initial,quantity_available,cost_price,created_by)
         VALUES($1,$2,$3,$4,$4,NULL,$5) RETURNING id`, [adminProductId,source,vendorId,input.quantity,request.user.id]);
       await client.query(`INSERT INTO inventory_movements(inventory_batch_id,movement_type,quantity,note,created_by) VALUES($1,'IN',$2,'Stok masuk',$3)`, [rows[0].id,input.quantity,request.user.id]);
