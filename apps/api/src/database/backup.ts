@@ -22,7 +22,7 @@ try{
   await chmod(file,0o600);
   const db=maintenancePool();
   try{
-    const images=(await db.query("SELECT image_path FROM product_templates WHERE image_path LIKE '/api/product-images/%'")).rows;
+    const images=(await db.query("SELECT image_path FROM product_templates WHERE image_path LIKE '/api/product-images/%' UNION SELECT image_path_override AS image_path FROM admin_products WHERE image_path_override LIKE '/api/product-images/%'")).rows;
     const count=await backupPrivateProductImages(images.map(row=>row.image_path),`${file}.media`);
     console.log(`Backup created: ${file}; ${count} private images copied to its .media directory.`);
   }finally{await db.end();}

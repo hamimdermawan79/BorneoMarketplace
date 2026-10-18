@@ -1,0 +1,83 @@
+/* Bound the inventory to a readable width and align actions to its right edge. */
+.app-shell[data-page="inventory"] .page-title,
+.app-shell .workspace>main .stock-list-panel{width:100%;max-width:1120px;margin-inline:auto}
+.app-shell .workspace>main .stock-list-panel{padding:20px;overflow:hidden}
+.app-shell .stock-list-panel>.panel-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.stock-list-panel .panel-heading p{margin:6px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
+.stock-product-count{padding:6px 10px;border-radius:8px;background:#e5f0f7;color:var(--ui-ink);font-size:12px;white-space:nowrap}
+.app-shell .stock-list-panel .stock-table{width:100%;table-layout:fixed;font-size:13px}
+.app-shell .stock-list-panel .stock-table th{font-size:11px;text-transform:none;letter-spacing:0;padding:12px}
+.app-shell .stock-list-panel .stock-table th:first-child{width:29%;border-radius:10px 0 0 10px}
+.app-shell .stock-list-panel .stock-table th:last-child{width:170px;border-radius:0 10px 10px 0}
+.app-shell .stock-list-panel .stock-table :is(th,td):last-child{text-align:right;padding-right:12px}
+.app-shell .stock-list-panel .stock-table td{padding:16px 12px;vertical-align:middle;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.app-shell .stock-list-panel .stock-table td:first-child{display:table-cell}
+.stock-product-cell{display:flex;gap:12px;align-items:center;min-width:0}
+.stock-product-cell>div:last-child{display:grid;gap:5px;min-width:0}
+.app-shell .stock-list-panel .stock-table td small{font-size:12px;line-height:1.5}
+.stock-product-thumb{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:10px;overflow:hidden;background:#eaf2f7;color:var(--muted)}
+.stock-product-thumb img{width:100%;height:100%;object-fit:cover}
+.stock-total{display:inline-block;padding:5px 8px;border-radius:6px;background:#e8f3fa;line-height:1.5}
+.app-shell .stock-list-panel td[data-label="Aksi"] button{min-height:44px;padding:8px 12px;font-size:12px;white-space:normal;background:transparent;box-shadow:none}
+.app-shell .stock-editor{width:min(660px,100%);border-radius:18px}
+.app-shell .stock-editor>form{flex:1;min-height:0;overflow:hidden}
+.app-shell .stock-editor>header,.app-shell .stock-editor footer{flex-shrink:0}
+.stock-editor-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+.app-shell .stock-editor .account-editor-fields{min-height:0;overflow:visible}
+.app-shell .stock-editor>header{padding:18px 24px;background:#f5f9fc}
+.app-shell .stock-editor>header h2{font-size:18px;line-height:1.4}
+.app-shell .stock-editor>header p{line-height:1.5;overflow-wrap:anywhere}
+.app-shell .stock-editor .account-editor-fields{gap:20px;padding:20px 24px}
+.app-shell .stock-editor .account-section h3{margin:0 0 12px;font-size:14px}
+.stock-product-details{display:grid;gap:14px}
+.app-shell .stock-editor .stock-product-details h3{margin:0}
+.stock-product-fields{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px}
+.stock-price-input{position:relative;min-width:0}
+.stock-price-input>span{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--muted);pointer-events:none}
+.app-shell .stock-editor .stock-price-input input{padding-left:38px}
+.app-shell .stock-editor .photo-upload{min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:14px;background:#f5f9fc;border:1px dashed var(--line);border-radius:12px}
+.app-shell .stock-editor .photo-upload-preview{width:72px;height:72px;flex:0 0 72px;border-radius:10px;overflow:hidden}
+.app-shell .stock-editor .photo-upload-content{flex:1;min-width:180px}
+.app-shell .stock-editor .photo-upload-content>small{color:var(--muted);line-height:1.6;font-size:12px}
+.app-shell .stock-editor .photo-upload-actions{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+.app-shell .stock-editor .photo-upload-actions button{min-height:44px;font-size:12px;padding:8px 12px}
+.app-shell .stock-editor .account-hint{margin:0 0 12px;line-height:1.6}
+.app-shell .stock-editor .stock-product-details>.account-hint{margin:0}
+.app-shell .stock-editor .stock-edit-batches{display:grid;gap:10px}
+.app-shell .stock-editor .stock-edit-batch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding:14px;border:1px solid var(--line);border-radius:10px;background:#fbfdff}
+.stock-edit-batch>div{display:grid;gap:4px;min-width:0}
+.stock-edit-batch strong{font-size:14px;overflow-wrap:anywhere}
+.stock-edit-batch small{font-size:12px;line-height:1.5;color:var(--muted)}
+.app-shell .stock-editor .stock-delete-section{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--line);padding-top:18px;margin-top:0}
+.app-shell .stock-editor .stock-delete-section h3{margin:0 0 4px}
+.app-shell .stock-editor .stock-delete-section .account-hint{margin:0}
+.app-shell .stock-editor .stock-delete-button{color:#9b2538;border-color:#d9aeb6;background:transparent;min-height:44px;flex-shrink:0;box-shadow:none}
+.stock-delete-confirm{display:grid;gap:12px;width:100%;padding:14px;border:1px solid #ebcbd0;border-radius:10px;background:#fff7f8}
+.stock-delete-confirm>p{margin:0;font-size:13px;line-height:1.6;color:#71333e}
+.stock-delete-confirm>div{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.app-shell .stock-editor .stock-delete-final{background:#9b2538;color:#fff;border-color:#9b2538}
+.app-shell .stock-editor footer{padding:14px 24px;background:#f8fbfd}
+@media(max-width:1000px) and (min-width:761px){
+  .app-shell .stock-list-panel .stock-table{min-width:760px}
+}
+@media(max-width:760px){
+  .app-shell .workspace>main .stock-list-panel{padding:16px}
+  .app-shell .stock-list-panel .panel-heading{align-items:flex-start;margin-bottom:16px}
+  .app-shell .stock-list-panel .stock-table{min-width:0;table-layout:auto}
+  .app-shell .stock-list-panel .stock-table tbody{gap:12px}
+  .app-shell .stock-list-panel .stock-table tr{padding:14px;gap:14px;border-radius:12px;background:rgba(255,255,255,.65)}
+  .app-shell .stock-list-panel .stock-table td{display:grid;padding:0;font-size:13px}
+  .app-shell .stock-list-panel .stock-table td:first-child{display:block;padding-bottom:12px}
+  .app-shell .stock-list-panel .stock-table td:last-child{text-align:left;padding:12px 0 0}
+  .app-shell .stock-list-panel .stock-table td[data-label="Aksi"] button{width:100%}
+  .stock-total{justify-self:start}
+  .app-shell .stock-editor>header{padding:16px}
+  .app-shell .stock-editor .account-editor-fields{padding:16px;gap:18px}
+  .app-shell .stock-editor footer{padding:12px 16px}
+}
+@media(max-width:480px){
+  .stock-product-fields{grid-template-columns:1fr}
+  .app-shell .stock-editor .stock-edit-batch{grid-template-columns:1fr;gap:12px}
+  .app-shell .stock-editor .stock-delete-section{align-items:flex-start;flex-direction:column;gap:12px}
+  .stock-delete-confirm>div>button{flex:1 1 120px}
+}
